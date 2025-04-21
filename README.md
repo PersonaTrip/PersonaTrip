@@ -17,7 +17,7 @@ PersonaTrip is an application that uses AI technology to provide personalized tr
 - Generate personalized travel plans based on user preferences
 - Provide destination recommendations
 - Manage user travel plans
-- Offer intelligent travel suggestions using the Eino large language model
+- Offer intelligent travel suggestions using multiple large language models
 - User authentication system (login, registration)
 
 ### Technology Stack
@@ -28,7 +28,10 @@ PersonaTrip is an application that uses AI technology to provide personalized tr
   - MongoDB (travel data)
   - MySQL (user authentication data)
 - Authentication: JWT (JSON Web Token)
-- AI Model: Eino large language model framework
+- AI Integration: 
+  - Eino framework with support for multiple LLMs
+  - Compatible with OpenAI, Ollama (local models), Ark, and more
+  - Flexible model selection at runtime
 - API Documentation: Swagger
 - Containerization: Docker
 
@@ -90,7 +93,16 @@ PORT=8080
 MONGO_URI=mongodb://your-mongodb-host:port/personatrip
 MYSQL_DSN=username:password@tcp(your-mysql-host:port)/personatrip?parseTime=true
 JWT_SECRET=your-jwt-secret-key
-EINO_API_KEY=your_eino_api_key
+
+# LLM Configuration (choose one or more based on your needs)
+# OpenAI Configuration
+# OPENAI_API_KEY=your-openai-api-key-here
+
+# Ollama Configuration (for local deployment)
+# OLLAMA_BASE_URL=http://localhost:11434
+
+# Ark Configuration
+# ARK_API_KEY=your-ark-api-key-here
 ```
 
 #### Running the Application
@@ -146,8 +158,47 @@ http://localhost:8080/swagger/index.html
 2. Request passes through middleware processing (e.g., authentication)
 3. Router dispatches the request to the corresponding handler
 4. Handler calls service layer methods
-5. Service layer interacts with storage layer, executes business logic
-6. Results are returned to the client
+5. Service layer interacts with storage layer and AI services
+6. AI services communicate with selected LLM providers based on configuration
+7. Results are processed and returned to the client
+
+### LLM Integration
+
+PersonaTrip supports multiple large language models through the Eino framework:
+
+#### Supported Models
+
+- **OpenAI**: GPT-3.5, GPT-4, etc.
+- **Ollama**: Local deployment of open-source models like Llama, Mistral, etc.
+- **Ark**: Cloud-based models from Volcano Engine
+- **Mock**: For testing and development
+
+#### Usage Examples
+
+```go
+// Using OpenAI
+service := NewEinoServiceWithModel(
+    einosdk.ModelTypeOpenAI,
+    einosdk.WithAPIKey("your-openai-api-key"),
+    einosdk.WithModel("gpt-4"),
+)
+
+// Using Ollama (locally deployed open-source models)
+service := NewEinoServiceWithModel(
+    einosdk.ModelTypeOllama,
+    einosdk.WithBaseURL("http://localhost:11434"),
+    einosdk.WithModel("llama2"),
+)
+
+// Using Ark
+service := NewEinoServiceWithModel(
+    einosdk.ModelTypeArk,
+    einosdk.WithAPIKey("your-ark-api-key"),
+)
+
+// Using Mock model (for testing)
+service := NewEinoServiceWithModel(einosdk.ModelTypeMock)
+```
 
 ---
 
@@ -164,7 +215,7 @@ PersonaTrip是一个利用AI技术为用户提供个性化旅游规划的应用�
 - 基于用户偏好生成个性化旅游计划
 - 提供目的地推荐
 - 管理用户旅行计划
-- 结合Eino大模型提供智能旅游建议
+- 结合多种大语言模型提供智能旅游建议
 - 用户认证系统（登录、注册）
 
 ### 技术栈
@@ -175,7 +226,10 @@ PersonaTrip是一个利用AI技术为用户提供个性化旅游规划的应用�
   - MongoDB（旅行数据）
   - MySQL（用户认证数据）
 - 认证：JWT (JSON Web Token)
-- AI模型：Eino大模型框架
+- AI集成：
+  - Eino框架（支持多种大模型）
+  - 兼容OpenAI、Ollama（本地模型）、Ark等多种模型
+  - 支持运行时灵活切换模型
 - API文档：Swagger
 - 容器化：Docker
 
@@ -237,7 +291,16 @@ PORT=8080
 MONGO_URI=mongodb://your-mongodb-host:port/personatrip
 MYSQL_DSN=username:password@tcp(your-mysql-host:port)/personatrip?parseTime=true
 JWT_SECRET=your-jwt-secret-key
-EINO_API_KEY=your_eino_api_key
+
+# 大模型配置（根据需要选择一种或多种）
+# OpenAI配置
+# OPENAI_API_KEY=your-openai-api-key-here
+
+# Ollama配置（本地部署）
+# OLLAMA_BASE_URL=http://localhost:11434
+
+# Ark配置
+# ARK_API_KEY=your-ark-api-key-here
 ```
 
 #### 运行应用
@@ -293,5 +356,44 @@ http://localhost:8080/swagger/index.html
 2. 请求经过中间件处理（如认证）
 3. 路由将请求分发到对应的处理器
 4. 处理器调用服务层方法
-5. 服务层与存储层交互，执行业务逻辑
-6. 结果返回给客户端
+5. 服务层与存储层和AI服务交互
+6. AI服务根据配置与选定的大模型提供商通信
+7. 处理结果并返回给客户端
+
+### 大模型集成
+
+PersonaTrip通过Eino框架支持多种大语言模型：
+
+#### 支持的模型
+
+- **OpenAI**：GPT-3.5、GPT-4等
+- **Ollama**：本地部署的开源模型，如Llama、Mistral等
+- **Ark**：火山引擎提供的云端模型
+- **Mock**：用于测试和开发
+
+#### 使用示例
+
+```go
+// 使用OpenAI
+service := NewEinoServiceWithModel(
+    einosdk.ModelTypeOpenAI,
+    einosdk.WithAPIKey("your-openai-api-key"),
+    einosdk.WithModel("gpt-4"),
+)
+
+// 使用Ollama（本地部署的开源模型）
+service := NewEinoServiceWithModel(
+    einosdk.ModelTypeOllama,
+    einosdk.WithBaseURL("http://localhost:11434"),
+    einosdk.WithModel("llama2"),
+)
+
+// 使用Ark
+service := NewEinoServiceWithModel(
+    einosdk.ModelTypeArk,
+    einosdk.WithAPIKey("your-ark-api-key"),
+)
+
+// 使用Mock模型（用于测试）
+service := NewEinoServiceWithModel(einosdk.ModelTypeMock)
+```

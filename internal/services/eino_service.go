@@ -16,7 +16,16 @@ type EinoService struct {
 
 // NewEinoService 创建新的Eino服务实例
 func NewEinoService(apiKey string) *EinoService {
-	client := einosdk.NewClient(apiKey)
+	// 默认使用Mock模型，方便测试
+	client := einosdk.NewClient(einosdk.ModelTypeMock, einosdk.WithAPIKey(apiKey))
+	return &EinoService{
+		client: client,
+	}
+}
+
+// NewEinoServiceWithModel 创建指定模型类型的Eino服务实例
+func NewEinoServiceWithModel(modelType einosdk.ModelType, options ...einosdk.ClientOption) *EinoService {
+	client := einosdk.NewClient(modelType, options...)
 	return &EinoService{
 		client: client,
 	}
@@ -29,9 +38,8 @@ func (s *EinoService) GenerateTripPlan(ctx context.Context, req *models.PlanRequ
 
 	// 调用Eino API
 	response, err := s.client.GenerateText(ctx, &einosdk.GenerateTextRequest{
-		Model:    "eino-large",  // 使用适当的模型名称
-		Prompt:   prompt,
-		MaxTokens: 2000,
+		Prompt:      prompt,
+		MaxTokens:   2000,
 		Temperature: 0.7,
 	})
 	if err != nil {
