@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"personatrip/internal/api"
 	"personatrip/internal/config"
+	"personatrip/internal/middleware"
 )
 
 // Execute 启动服务器并处理优雅关闭
@@ -29,6 +30,9 @@ func Execute() error {
 
 	// 创建路由
 	router := gin.Default()
+	
+	// 添加CORS中间件，允许所有跨域请求
+	router.Use(middleware.CORS())
 	
 	// 注册API路由
 	api.RegisterRoutes(router)

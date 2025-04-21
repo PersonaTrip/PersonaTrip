@@ -1,10 +1,14 @@
 package einosdk
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"time"
 )
 
 // ModelType 表示支持的大模型类型
@@ -146,28 +150,226 @@ func (c *Client) GenerateText(ctx context.Context, req *GenerateTextRequest) (*G
 
 // generateTextWithOpenAI 使用OpenAI API生成文本
 func (c *Client) generateTextWithOpenAI(ctx context.Context, req *GenerateTextRequest) (*GenerateTextResponse, error) {
-	// 实际项目中应该调用OpenAI API
-	// 这里仅作为示例
+	if c.apiKey == "" {
+		return nil, fmt.Errorf("OpenAI API key is required")
+	}
+	
+	// 构建请求URL
+	url := "https://api.openai.com/v1/chat/completions"
+	
+	// 构建请求体
+	openaiReq := map[string]interface{}{
+		"model": c.model,
+		"messages": []map[string]string{
+			{"role": "user", "content": req.Prompt},
+		},
+		"temperature": req.Temperature,
+		"max_tokens": req.MaxTokens,
+	}
+	
+	// 将请求体转换为JSON
+	reqBody, err := json.Marshal(openaiReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	
+	// 创建HTTP请求
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	
+	// 设置请求头
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
+	
+	// 发送请求
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	// 读取响应
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+	
+	// 检查响应状态码
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(respBody))
+	}
+	
+	// 解析响应
+	var openaiResp struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	
+	if err := json.Unmarshal(respBody, &openaiResp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+	
+	// 提取生成的文本
+	if len(openaiResp.Choices) == 0 {
+		return nil, fmt.Errorf("no text generated")
+	}
+	
 	return &GenerateTextResponse{
-		Text: "这是OpenAI模型生成的回复",
+		Text: openaiResp.Choices[0].Message.Content,
 	}, nil
 }
 
 // generateTextWithOllama 使用Ollama生成文本
 func (c *Client) generateTextWithOllama(ctx context.Context, req *GenerateTextRequest) (*GenerateTextResponse, error) {
-	// 实际项目中应该调用Ollama API
-	// 这里仅作为示例
+	// 构建请求URL
+	baseURL := c.baseURL
+	if baseURL == "" {
+		baseURL = "http://localhost:11434"
+	}
+	url := fmt.Sprintf("%s/api/generate", baseURL)
+	
+	// 构建请求体
+	ollamaReq := map[string]interface{}{
+		"model": c.model,
+		"prompt": req.Prompt,
+		"temperature": req.Temperature,
+		"num_predict": req.MaxTokens,
+		"stream": false,
+	}
+	
+	// 将请求体转换为JSON
+	reqBody, err := json.Marshal(ollamaReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	
+	// 创建HTTP请求
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	
+	// 设置请求头
+	httpReq.Header.Set("Content-Type", "application/json")
+	
+	// 发送请求
+	client := &http.Client{Timeout: 120 * time.Second} // Ollama可能需要更长的超时时间
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	// 读取响应
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+	
+	// 检查响应状态码
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(respBody))
+	}
+	
+	// 解析响应
+	var ollamaResp struct {
+		Response string `json:"response"`
+	}
+	
+	if err := json.Unmarshal(respBody, &ollamaResp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+	
 	return &GenerateTextResponse{
-		Text: "这是Ollama模型生成的回复",
+		Text: ollamaResp.Response,
 	}, nil
 }
 
 // generateTextWithArk 使用Ark生成文本
 func (c *Client) generateTextWithArk(ctx context.Context, req *GenerateTextRequest) (*GenerateTextResponse, error) {
-	// 实际项目中应该调用Ark API
-	// 这里仅作为示例
+	// 基于Eino框架文档实现: https://www.cloudwego.io/zh/docs/eino/ecosystem_integration/chat_model/chat_model_ark/
+	
+	if c.apiKey == "" {
+		return nil, fmt.Errorf("Ark API key is required")
+	}
+	
+	// 构建请求URL
+	url := c.baseURL
+	if url == "" {
+		url = "https://api.ark.com/v1/chat/completions"
+	}
+	
+	// 构建请求体
+	arkReq := map[string]interface{}{
+		"model": c.model,
+		"messages": []map[string]string{
+			{"role": "user", "content": req.Prompt},
+		},
+		"temperature": req.Temperature,
+		"max_tokens": req.MaxTokens,
+	}
+	
+	// 将请求体转换为JSON
+	reqBody, err := json.Marshal(arkReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	
+	// 创建HTTP请求
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	
+	// 设置请求头
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
+	
+	// 发送请求
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	// 读取响应
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+	
+	// 检查响应状态码
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(respBody))
+	}
+	
+	// 解析响应
+	var arkResp struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	
+	if err := json.Unmarshal(respBody, &arkResp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+	
+	// 提取生成的文本
+	if len(arkResp.Choices) == 0 {
+		return nil, fmt.Errorf("no text generated")
+	}
+	
 	return &GenerateTextResponse{
-		Text: "这是Ark模型生成的回复",
+		Text: arkResp.Choices[0].Message.Content,
 	}, nil
 }
 

@@ -9,38 +9,104 @@ import (
 	"personatrip/pkg/einosdk"
 )
 
-// EinoService 处理与Eino大模型的交互
+// EinoService 是大模型服务的实现
 type EinoService struct {
-	client *einosdk.Client
+	client         *einosdk.Client
+	configService  ModelConfigService
+	activeConfig   *models.ModelConfig
+	defaultOptions *einosdk.GenerateTextRequest
 }
 
 // NewEinoService 创建新的Eino服务实例
-func NewEinoService(apiKey string) *EinoService {
-	// 默认使用Mock模型，方便测试
-	client := einosdk.NewClient(einosdk.ModelTypeMock, einosdk.WithAPIKey(apiKey))
-	return &EinoService{
-		client: client,
+func NewEinoService(configService ModelConfigService) *EinoService {
+	service := &EinoService{
+		configService: configService,
+		defaultOptions: &einosdk.GenerateTextRequest{
+			MaxTokens:   2000,
+			Temperature: 0.7,
+		},
 	}
+	
+	// 初始化时尝试加载激活的模型配置
+	service.RefreshModelConfig(context.Background())
+	
+	return service
 }
 
-// NewEinoServiceWithModel 创建指定模型类型的Eino服务实例
-func NewEinoServiceWithModel(modelType einosdk.ModelType, options ...einosdk.ClientOption) *EinoService {
-	client := einosdk.NewClient(modelType, options...)
-	return &EinoService{
-		client: client,
+
+// NewEinoServiceWithConfig 根据指定的模型配置创建新的Eino服务实例
+func NewEinoServiceWithConfig(config *models.ModelConfig) *EinoService {
+	service := &EinoService{
+		activeConfig: config,
+		defaultOptions: &einosdk.GenerateTextRequest{
+			MaxTokens:   config.MaxTokens,
+			Temperature: config.Temperature,
+		},
 	}
+	
+	// 创建Eino客户端
+	service.client = einosdk.NewClient(
+		config.ToEinoModelType(),
+		config.GetEinoOptions()...,
+	)
+	
+	return service
+}
+
+// TestGenerateText 测试生成文本
+func (s *EinoService) TestGenerateText(ctx context.Context, prompt string) (string, error) {
+	// 调用Eino API
+	response, err := s.client.GenerateText(ctx, &einosdk.GenerateTextRequest{
+		Prompt:      prompt,
+		MaxTokens:   s.defaultOptions.MaxTokens,
+		Temperature: s.defaultOptions.Temperature,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return response.Text, nil
+}
+
+// RefreshModelConfig 刷新模型配置
+func (s *EinoService) RefreshModelConfig(ctx context.Context) error {
+	// 从数据库获取激活的模型配置
+	config, err := s.configService.GetActiveModelConfig(ctx)
+	if err != nil {
+		// 如果没有激活的配置，使用Mock模型
+		s.client = einosdk.NewClient(einosdk.ModelTypeMock)
+		return err
+	}
+	
+	// 更新激活的配置
+	s.activeConfig = config
+	
+	// 更新默认选项
+	s.defaultOptions.MaxTokens = config.MaxTokens
+	s.defaultOptions.Temperature = config.Temperature
+	
+	// 创建Eino客户端
+	s.client = einosdk.NewClient(
+		config.ToEinoModelType(),
+		config.GetEinoOptions()...,
+	)
+	
+	return nil
 }
 
 // GenerateTripPlan 根据用户请求生成旅行计划
 func (s *EinoService) GenerateTripPlan(ctx context.Context, req *models.PlanRequest) (*models.TripPlan, error) {
+	// 刷新模型配置，确保使用最新的配置
+	s.RefreshModelConfig(ctx)
+	
 	// 构建提示词
 	prompt := buildTripPlanPrompt(req)
 
 	// 调用Eino API
 	response, err := s.client.GenerateText(ctx, &einosdk.GenerateTextRequest{
 		Prompt:      prompt,
-		MaxTokens:   2000,
-		Temperature: 0.7,
+		MaxTokens:   s.defaultOptions.MaxTokens,
+		Temperature: s.defaultOptions.Temperature,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate trip plan: %w", err)

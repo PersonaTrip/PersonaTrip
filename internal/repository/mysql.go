@@ -13,7 +13,7 @@ import (
 
 // MySQL 实现用户数据存储
 type MySQL struct {
-	db *sql.DB
+	DB *sql.DB // 公开的数据库连接，可以被其他仓库使用
 }
 
 // NewMySQL 创建新的MySQL存储实例
@@ -38,7 +38,7 @@ func NewMySQL(dsn string) (*MySQL, error) {
 		return nil, err
 	}
 
-	return &MySQL{db: db}, nil
+	return &MySQL{DB: db}, nil
 }
 
 // 创建必要的表
@@ -55,16 +55,80 @@ func createTables(db *sql.DB) error {
 	);`
 
 	_, err := db.Exec(userTable)
+	if err != nil {
+		return err
+	}
+
+	// 创建管理员表
+	adminTable := `
+	CREATE TABLE IF NOT EXISTS admins (
+		id INT AUTO_INCREMENT PRIMARY KEY,
+		username VARCHAR(50) NOT NULL UNIQUE,
+		email VARCHAR(100) NOT NULL UNIQUE,
+		password VARCHAR(100) NOT NULL,
+		role VARCHAR(20) NOT NULL DEFAULT 'admin',
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+	);`
+
+	_, err = db.Exec(adminTable)
+	if err != nil {
+		return err
+	}
+
+	// 创建模型配置表
+	modelConfigTable := `
+	CREATE TABLE IF NOT EXISTS model_configs (
+		id INT AUTO_INCREMENT PRIMARY KEY,
+		name VARCHAR(100) NOT NULL,
+		model_type VARCHAR(50) NOT NULL,
+		model_name VARCHAR(100) NOT NULL,
+		api_key VARCHAR(255),
+		base_url VARCHAR(255),
+		is_active BOOLEAN DEFAULT FALSE,
+		temperature FLOAT DEFAULT 0.7,
+		max_tokens INT DEFAULT 2000,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+	);`
+
+	_, err = db.Exec(modelConfigTable)
 	return err
+}
+
+// AutoMigrate 自动迁移数据库表
+func (m *MySQL) AutoMigrate(models ...interface{}) error {
+	// 我们已经在createTables函数中创建了表，这里只是一个占位符
+	// 如果需要添加其他表或字段，可以在createTables函数中添加
+	return nil
 }
 
 // Close 关闭数据库连接
 func (m *MySQL) Close() error {
-	return m.db.Close()
+	return m.DB.Close()
 }
 
 // CreateUser 创建新用户
 func (m *MySQL) CreateUser(ctx *gin.Context, user *models.UserMySQL) (*models.UserMySQL, error) {
+	// 检查用户名是否已存在
+	var count int
+	err := m.DB.QueryRow("SELECT COUNT(*) FROM users WHERE username = ?", user.Username).Scan(&count)
+	if err != nil {
+		return nil, err
+	}
+	if count > 0 {
+		return nil, fmt.Errorf("username already exists")
+	}
+
+	// 检查邮箱是否已存在
+	err = m.DB.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", user.Email).Scan(&count)
+	if err != nil {
+		return nil, err
+	}
+	if count > 0 {
+		return nil, fmt.Errorf("email already exists")
+	}
+
 	// 加密密码
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -76,7 +140,7 @@ func (m *MySQL) CreateUser(ctx *gin.Context, user *models.UserMySQL) (*models.Us
 	INSERT INTO users (username, email, password, created_at, updated_at)
 	VALUES (?, ?, ?, NOW(), NOW())`
 
-	result, err := m.db.Exec(query, user.Username, user.Email, string(hashedPassword))
+	result, err := m.DB.Exec(query, user.Username, user.Email, string(hashedPassword))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -94,13 +158,13 @@ func (m *MySQL) CreateUser(ctx *gin.Context, user *models.UserMySQL) (*models.Us
 
 // GetUserByID 通过ID获取用户
 func (m *MySQL) GetUserByID(ctx *gin.Context, id uint) (*models.UserMySQL, error) {
-	query := `
-	SELECT id, username, email, created_at, updated_at
-	FROM users
-	WHERE id = ?`
-
 	var user models.UserMySQL
-	err := m.db.QueryRow(query, id).Scan(
+
+	row := m.DB.QueryRow(
+		"SELECT id, username, email, created_at, updated_at FROM users WHERE id = ?",
+		id,
+	)
+	err := row.Scan(
 		&user.ID,
 		&user.Username,
 		&user.Email,
@@ -109,7 +173,7 @@ func (m *MySQL) GetUserByID(ctx *gin.Context, id uint) (*models.UserMySQL, error
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrNotFound
+			return nil, fmt.Errorf("user not found")
 		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -119,13 +183,13 @@ func (m *MySQL) GetUserByID(ctx *gin.Context, id uint) (*models.UserMySQL, error
 
 // GetUserByUsername 通过用户名获取用户
 func (m *MySQL) GetUserByUsername(ctx *gin.Context, username string) (*models.UserMySQL, error) {
-	query := `
-	SELECT id, username, email, password, created_at, updated_at
-	FROM users
-	WHERE username = ?`
-
 	var user models.UserMySQL
-	err := m.db.QueryRow(query, username).Scan(
+
+	row := m.DB.QueryRow(
+		"SELECT id, username, email, password, created_at, updated_at FROM users WHERE username = ?",
+		username,
+	)
+	err := row.Scan(
 		&user.ID,
 		&user.Username,
 		&user.Email,
@@ -135,7 +199,7 @@ func (m *MySQL) GetUserByUsername(ctx *gin.Context, username string) (*models.Us
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrNotFound
+			return nil, fmt.Errorf("user not found")
 		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}

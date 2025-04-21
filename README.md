@@ -1,91 +1,105 @@
-# PersonaTrip - AI定制旅游规划系统 | AI-Powered Custom Travel Planning System
+# PersonaTrip - AI定制旅游规划系统
 
-[English Version](#english-version) | [中文版本](#中文版本)
+## 项目概述
 
----
+PersonaTrip是一个基于Go语言和Eino大模型框架开发的AI定制旅游规划系统。该系统结合大语言模型、用户偏好分析和旅游知识图谱，为用户提供真正个性化的定制旅游服务。
 
-## English Version
+## 核心功能
 
-AI-powered custom travel planning backend system based on Go language and Eino large language model framework.
+- 基于用户偏好生成个性化旅游计划
+- 提供目的地推荐
+- 管理用户旅行计划
+- 结合多种大语言模型提供智能旅游建议
+- 用户认证系统（登录、注册）
+- 管理员后台系统（模型配置和管理）
 
-### Project Overview
 
-PersonaTrip is an application that uses AI technology to provide personalized travel planning for users. The system combines large language models, user preference analysis, and travel knowledge graphs to achieve truly personalized custom travel services.
+## 技术栈
 
-### Core Features
+- 后端：Go语言
+- Web框架：Gin
+- 数据库：
+  - MongoDB（旅行数据）
+  - MySQL（用户认证数据和管理员系统）
+- 认证：JWT (JSON Web Token)
+- AI集成：
+  - Eino框架（支持多种大模型）
+  - 兼容OpenAI、Ollama（本地模型）、Ark等多种模型
+  - 支持管理员后台配置模型
+- API文档：Swagger
+- 容器化：Docker
 
-- Generate personalized travel plans based on user preferences
-- Provide destination recommendations
-- Manage user travel plans
-- Offer intelligent travel suggestions using multiple large language models
-- User authentication system (login, registration)
-
-### Technology Stack
-
-- Backend: Go
-- Web Framework: Gin
-- Databases:
-  - MongoDB (travel data)
-  - MySQL (user authentication data)
-- Authentication: JWT (JSON Web Token)
-- AI Integration: 
-  - Eino framework with support for multiple LLMs
-  - Compatible with OpenAI, Ollama (local models), Ark, and more
-  - Flexible model selection at runtime
-- API Documentation: Swagger
-- Containerization: Docker
-
-### Project Structure
+## 项目结构
 
 ```
-PersonaTrip/
-├── cmd/                # Command line entry points
-│   └── root.go         # Main command implementation, server startup and graceful shutdown
-├── internal/           # Internal packages
-│   ├── api/            # API route definitions
-│   │   └── routes.go   # Registration of all API routes
-│   ├── config/         # Configuration management
-│   │   └── config.go   # Application configuration structure and loading logic
-│   ├── handlers/       # HTTP request handlers
-│   │   ├── auth_handlers.go  # Authentication-related handlers
-│   │   └── trip_handlers.go  # Travel plan-related handlers
-│   ├── middleware/     # Middleware
-│   │   └── auth.go     # Authentication middleware
-│   ├── models/         # Data models
-│   │   ├── models.go   # Travel plan-related models
-│   │   └── user.go     # User-related models
-│   ├── repository/     # Data storage layer
-│   │   ├── errors.go           # Storage layer error definitions
-│   │   ├── memory_store.go     # In-memory storage implementation (backup)
-│   │   ├── mongodb.go          # MongoDB storage implementation
-│   │   └── mysql.go            # MySQL storage implementation
-│   └── services/       # Business logic layer
-│       ├── auth_service.go     # Authentication service
-│       └── eino_service.go     # Eino AI service
-├── pkg/                # Exportable packages
+personatrip/
+├── cmd/                # 命令行入口
+│   └── root.go         # 主服务器初始化
+├── internal/           # 内部包
+│   ├── api/            # API路由定义
+│   │   ├── routes.go      # 主API路由
+│   │   └── admin_routes.go # 管理员API路由
+│   ├── config/         # 配置管理
+│   │   └── config.go      # 应用配置
+│   ├── handlers/       # 请求处理器
+│   │   ├── auth_handler.go    # 认证处理器
+│   │   ├── trip_handler.go    # 旅行计划处理器
+│   │   ├── admin_handler.go   # 管理员处理器
+│   │   └── model_config_handler.go # 模型配置处理器
+│   ├── middleware/     # 中间件组件
+│   │   ├── auth.go        # 认证中间件
+│   │   └── admin_auth.go  # 管理员认证中间件
+│   ├── models/         # 数据模型
+│   │   ├── user.go        # 用户模型
+│   │   ├── trip.go        # 旅行模型
+│   │   ├── admin.go       # 管理员模型
+│   │   └── model_config.go # 模型配置模型
+│   ├── repository/     # 数据存储层
+│   │   ├── mongodb.go     # MongoDB存储
+│   │   ├── mysql.go       # MySQL存储
+│   │   ├── admin_repository.go # 管理员存储
+│   │   └── model_config_repository.go # 模型配置存储
+│   └── services/       # 业务逻辑层
+│       ├── auth_service.go     # 认证服务
+│       ├── eino_service.go     # Eino AI服务
+│       ├── admin_service.go    # 管理员服务
+│       └── model_config_service.go # 模型配置服务
+├── pkg/                # 可导出的包
 │   └── einosdk/        # Eino SDK
-│       └── einosdk.go  # Eino SDK implementation
-├── .env                # Environment variables
-├── API接口文档.md        # API documentation in Chinese
-├── Dockerfile          # Docker build file
-├── go.mod              # Go module definition
-├── go.sum              # Dependency version lock
-├── main.go             # Application entry point
-└── README.md           # Project documentation
+│       └── einosdk.go  # Eino SDK实现
+├── .env                # 环境变量
+├── API接口文档.md        # API文档（中文）
+├── Dockerfile          # Docker构建文件
+├── go.mod              # Go模块定义
+├── go.sum              # 依赖版本锁
+├── main.go             # 应用入口点
+└── README.md           # 项目文档
 ```
 
-### Installation and Running
+## 数据流
 
-#### Prerequisites
+1. 客户端发送HTTP请求到API端点
+2. 请求经过中间件处理（如认证）
+3. 路由将请求分发到对应的处理器
+4. 处理器调用服务层方法
+5. 服务层与存储层和AI服务交互
+6. AI服务根据配置与选定的大模型提供商通信
+7. 处理结果并返回给客户端
 
-- Go 1.21 or higher
-- MongoDB
-- MySQL
-- Eino API key
+## 大模型集成
 
-#### Environment Variables Configuration
+PersonaTrip通过Eino框架支持多种大语言模型，并提供管理员后台进行配置和管理：
 
-Create a `.env` file and configure the following environment variables:
+### 支持的模型
+
+- **OpenAI**：GPT-3.5、GPT-4等
+- **Ollama**：本地部署的开源模型，如Llama、Mistral等
+- **Ark**：火山引擎提供的云端模型
+- **Mock**：用于测试和开发
+
+### 环境变量配置
+
+在`.env`文件中配置以下环境变量：
 
 ```
 APP_ENV=development
@@ -94,111 +108,126 @@ MONGO_URI=mongodb://your-mongodb-host:port/personatrip
 MYSQL_DSN=username:password@tcp(your-mysql-host:port)/personatrip?parseTime=true
 JWT_SECRET=your-jwt-secret-key
 
-# LLM Configuration (choose one or more based on your needs)
-# OpenAI Configuration
+# 自动迁移数据库和创建超级管理员
+# AUTO_MIGRATE=true
+# CREATE_SUPER_ADMIN=true
+# SUPER_ADMIN_USERNAME=admin
+# SUPER_ADMIN_PASSWORD=admin123
+# SUPER_ADMIN_EMAIL=admin@personatrip.com
+
+# 大模型配置（可选，优先使用数据库配置）
+# OpenAI配置
 # OPENAI_API_KEY=your-openai-api-key-here
 
-# Ollama Configuration (for local deployment)
+# Ollama配置（本地部署）
 # OLLAMA_BASE_URL=http://localhost:11434
 
-# Ark Configuration
+# Ark配置
 # ARK_API_KEY=your-ark-api-key-here
 ```
 
-#### Running the Application
+## 管理员系统
+
+系统包含一个完整的管理员后台，用于管理和配置大模型。
+
+### 管理员角色
+
+- **超级管理员**（super_admin）：可以管理其他管理员和所有模型配置
+- **普通管理员**（admin）：可以管理模型配置
+
+### 管理员API端点
+
+- `POST /api/admin/login` - 管理员登录
+
+#### 管理员管理（需要超级管理员权限）
+
+- `POST /api/admin/admins` - 创建新管理员
+- `GET /api/admin/admins` - 获取所有管理员
+- `GET /api/admin/admins/:id` - 获取特定管理员
+- `PUT /api/admin/admins/:id` - 更新管理员
+- `DELETE /api/admin/admins/:id` - 删除管理员
+
+#### 模型配置管理
+
+- `POST /api/admin/models` - 创建新的模型配置
+- `GET /api/admin/models` - 获取所有模型配置
+- `GET /api/admin/models/active` - 获取当前活跃的模型配置
+- `GET /api/admin/models/:id` - 获取特定模型配置
+- `PUT /api/admin/models/:id` - 更新模型配置
+- `DELETE /api/admin/models/:id` - 删除模型配置
+- `POST /api/admin/models/:id/activate` - 设置指定模型为活跃
+- `POST /api/admin/models/:id/test` - 测试指定模型
+
+### 模型配置字段
+
+每个模型配置包含以下字段：
+
+- **名称**：配置的显示名称
+- **模型类型**：openai、ollama、ark或mock
+- **模型名称**：具体的模型名称（如gpt-4、llama2等）
+- **API密钥**：如果需要，提供模型的API密钥
+- **基础URL**：如果需要，提供模型的API基础URL
+- **是否活跃**：标记该配置是否当前活跃
+- **温度**：生成文本的温度参数
+- **最大令牌数**：生成文本的最大令牌数
+
+## 安装和运行
+
+### 前置条件
+
+- Go 1.21或更高版本
+- MongoDB
+- MySQL
+
+### 运行应用
 
 ```bash
-# Install dependencies
+# 安装依赖
+# 注意：需要添加以下依赖到go.mod
+# github.com/golang-jwt/jwt/v4
+# gorm.io/gorm
 go mod download
 
-# Run the application
+# 运行应用
 go run main.go
 
-# Or build and run
+# 或构建并运行
 go build -o personatrip
 ./personatrip
 ```
 
-### Docker Deployment
+### Docker部署
 
 ```bash
-# Build Docker image
+# 构建Docker镜像
 docker build -t personatrip:latest .
 
-# Run container
-docker run -p 8080:8080 personatrip:latest
+# 运行容器
+docker run -p 8080:8080 --env-file .env personatrip:latest
 ```
 
-### API Documentation
+## API文档
 
-API documentation is available in the `API接口文档.md` file, or you can access the Swagger API documentation after starting the application at:
+API文档可在`API接口文档.md`文件中查看，或在启动应用后访问：
 
 ```
 http://localhost:8080/swagger/index.html
 ```
 
-### Main API Endpoints
+## 主要API端点
 
-#### Travel Plan Related
-- `POST /api/trips` - Create a travel plan
-- `GET /api/trips/:id` - Get travel plan details
-- `GET /api/trips` - Get all travel plans for a user
-- `PUT /api/trips/:id` - Update a travel plan
-- `DELETE /api/trips/:id` - Delete a travel plan
-- `POST /api/trips/:id/ai-suggestions` - Get AI travel suggestions
+### 旅行计划相关
+- `POST /api/trips` - 创建旅行计划
+- `GET /api/trips/:id` - 获取旅行计划详情
+- `GET /api/trips` - 获取用户的所有旅行计划
+- `PUT /api/trips/:id` - 更新旅行计划
+- `DELETE /api/trips/:id` - 删除旅行计划
+- `POST /api/trips/:id/ai-suggestions` - 获取AI旅行建议
 
-#### Authentication Related
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `GET /api/auth/profile` - Get user profile
-
-### Data Flow
-
-1. Client sends HTTP request to API endpoint
-2. Request passes through middleware processing (e.g., authentication)
-3. Router dispatches the request to the corresponding handler
-4. Handler calls service layer methods
-5. Service layer interacts with storage layer and AI services
-6. AI services communicate with selected LLM providers based on configuration
-7. Results are processed and returned to the client
-
-### LLM Integration
-
-PersonaTrip supports multiple large language models through the Eino framework:
-
-#### Supported Models
-
-- **OpenAI**: GPT-3.5, GPT-4, etc.
-- **Ollama**: Local deployment of open-source models like Llama, Mistral, etc.
-- **Ark**: Cloud-based models from Volcano Engine
-- **Mock**: For testing and development
-
-#### Usage Examples
-
-```go
-// Using OpenAI
-service := NewEinoServiceWithModel(
-    einosdk.ModelTypeOpenAI,
-    einosdk.WithAPIKey("your-openai-api-key"),
-    einosdk.WithModel("gpt-4"),
-)
-
-// Using Ollama (locally deployed open-source models)
-service := NewEinoServiceWithModel(
-    einosdk.ModelTypeOllama,
-    einosdk.WithBaseURL("http://localhost:11434"),
-    einosdk.WithModel("llama2"),
-)
-
-// Using Ark
-service := NewEinoServiceWithModel(
-    einosdk.ModelTypeArk,
-    einosdk.WithAPIKey("your-ark-api-key"),
-)
-
-// Using Mock model (for testing)
-service := NewEinoServiceWithModel(einosdk.ModelTypeMock)
-```
+### 认证相关
+- `POST /api/auth/register` - 用户注册
+- `POST /api/auth/login` - 用户登录
+- `GET /api/auth/profile` - 获取用户信息
 
 ---
 
