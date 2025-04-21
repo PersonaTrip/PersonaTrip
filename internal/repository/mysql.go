@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
-	"personatrip/internal/models"
 	"golang.org/x/crypto/bcrypt"
+	"personatrip/internal/models"
 )
 
 // MySQL 实现用户数据存储
@@ -47,6 +47,7 @@ func createTables(db *sql.DB) error {
 	userTable := `
 	CREATE TABLE IF NOT EXISTS users (
 		id INT AUTO_INCREMENT PRIMARY KEY,
+		user_id VARCHAR (100) NOT NULL UNIQUE,
 		username VARCHAR(50) NOT NULL UNIQUE,
 		email VARCHAR(100) NOT NULL UNIQUE,
 		password VARCHAR(100) NOT NULL,
@@ -137,10 +138,10 @@ func (m *MySQL) CreateUser(ctx *gin.Context, user *models.UserMySQL) (*models.Us
 
 	// 插入用户
 	query := `
-	INSERT INTO users (username, email, password, created_at, updated_at)
-	VALUES (?, ?, ?, NOW(), NOW())`
+	INSERT INTO users (username, user_id, email, password, created_at, updated_at)
+	VALUES (?, ?, ?, ?, NOW(), NOW())`
 
-	result, err := m.DB.Exec(query, user.Username, user.Email, string(hashedPassword))
+	result, err := m.DB.Exec(query, user.Username, user.UserID, user.Email, string(hashedPassword))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -157,15 +158,16 @@ func (m *MySQL) CreateUser(ctx *gin.Context, user *models.UserMySQL) (*models.Us
 }
 
 // GetUserByID 通过ID获取用户
-func (m *MySQL) GetUserByID(ctx *gin.Context, id uint) (*models.UserMySQL, error) {
+func (m *MySQL) GetUserByID(ctx *gin.Context, userID string) (*models.UserMySQL, error) {
 	var user models.UserMySQL
 
 	row := m.DB.QueryRow(
-		"SELECT id, username, email, created_at, updated_at FROM users WHERE id = ?",
-		id,
+		"SELECT id, user_id, username, email, created_at, updated_at FROM users WHERE user_id = ?",
+		userID,
 	)
 	err := row.Scan(
 		&user.ID,
+		&user.UserID,
 		&user.Username,
 		&user.Email,
 		&user.CreatedAt,
@@ -186,11 +188,12 @@ func (m *MySQL) GetUserByUsername(ctx *gin.Context, username string) (*models.Us
 	var user models.UserMySQL
 
 	row := m.DB.QueryRow(
-		"SELECT id, username, email, password, created_at, updated_at FROM users WHERE username = ?",
+		"SELECT id, user_id, username, email, password, created_at, updated_at FROM users WHERE username = ?",
 		username,
 	)
 	err := row.Scan(
 		&user.ID,
+		&user.UserID,
 		&user.Username,
 		&user.Email,
 		&user.Password,

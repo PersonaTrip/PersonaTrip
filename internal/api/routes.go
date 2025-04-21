@@ -32,7 +32,9 @@ func RegisterRoutes(router *gin.Engine) {
 	// 自动迁移数据库
 	if cfg.AutoMigrate && mysqlDB != nil {
 		log.Println("Auto migrating database...")
-		if err := mysqlDB.AutoMigrate(&models.Admin{}, &models.ModelConfig{}); err != nil {
+		if err := mysqlDB.AutoMigrate(
+			&models.Admin{},
+			&models.ModelConfig{}); err != nil {
 			log.Printf("Failed to auto migrate: %v", err)
 		}
 	}

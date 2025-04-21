@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,7 +20,7 @@ type AuthService struct {
 // UserRepository 用户存储接口
 type UserRepository interface {
 	CreateUser(ctx *gin.Context, user *models.UserMySQL) (*models.UserMySQL, error)
-	GetUserByID(ctx *gin.Context, id uint) (*models.UserMySQL, error)
+	GetUserByID(ctx *gin.Context, userID string) (*models.UserMySQL, error)
 	GetUserByUsername(ctx *gin.Context, username string) (*models.UserMySQL, error)
 	CheckUserCredentials(ctx *gin.Context, username, password string) (*models.UserMySQL, error)
 }
@@ -36,10 +37,14 @@ func NewAuthService(userRepo UserRepository, jwtSecret string) *AuthService {
 // Register 用户注册
 func (s *AuthService) Register(ctx *gin.Context, req *models.RegisterRequest) (*models.UserMySQL, error) {
 	// 创建用户
+	userMongoID := primitive.NewObjectID()
+	userID := userMongoID.Hex()
+	fmt.Println(userID)
 	user := &models.UserMySQL{
 		Username: req.Username,
 		Email:    req.Email,
 		Password: req.Password,
+		UserID:   userID,
 	}
 
 	return s.userRepo.CreateUser(ctx, user)
@@ -54,7 +59,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *models.LoginRequest) (*models
 	}
 
 	// 生成JWT令牌
-	token, err := s.GenerateToken(user.ID)
+	token, err := s.GenerateToken(user.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +71,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *models.LoginRequest) (*models
 }
 
 // GenerateToken 生成JWT令牌
-func (s *AuthService) GenerateToken(userID uint) (string, error) {
+func (s *AuthService) GenerateToken(userID string) (string, error) {
 	// 创建令牌
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": userID,
@@ -83,7 +88,7 @@ func (s *AuthService) GenerateToken(userID uint) (string, error) {
 }
 
 // ValidateToken 验证JWT令牌
-func (s *AuthService) ValidateToken(tokenString string) (uint, error) {
+func (s *AuthService) ValidateToken(tokenString string) (string, error) {
 	// 解析令牌
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		// 验证签名方法
@@ -94,27 +99,27 @@ func (s *AuthService) ValidateToken(tokenString string) (uint, error) {
 	})
 
 	if err != nil {
-		return 0, fmt.Errorf("invalid token: %w", err)
+		return "", fmt.Errorf("invalid token: %w", err)
 	}
 
 	// 验证令牌有效性
 	if !token.Valid {
-		return 0, fmt.Errorf("invalid token")
+		return "", fmt.Errorf("invalid token")
 	}
 
 	// 获取声明
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return 0, fmt.Errorf("invalid token claims")
+		return "", fmt.Errorf("invalid token claims")
 	}
 
 	// 获取用户ID
-	userID, ok := claims["user_id"].(float64)
+	userID, ok := claims["user_id"].(string)
 	if !ok {
-		return 0, fmt.Errorf("invalid user ID in token")
+		return "", fmt.Errorf("invalid user ID in token")
 	}
 
-	return uint(userID), nil
+	return userID, nil
 }
 
 // GetUserFromToken 从令牌获取用户
@@ -124,7 +129,7 @@ func (s *AuthService) GetUserFromToken(ctx *gin.Context, tokenString string) (*m
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Println(userID)
 	// 获取用户
 	return s.userRepo.GetUserByID(ctx, userID)
 }

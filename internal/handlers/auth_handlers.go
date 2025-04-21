@@ -90,8 +90,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Router /api/auth/profile [get]
 func (h *AuthHandler) GetProfile(c *gin.Context) {
 	// 从上下文中获取用户ID
-	userID, exists := c.Get("user_id")
-	if !exists {
+	userID := c.GetString("user_id")
+	if userID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
 	}
@@ -104,7 +104,7 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 	}
 
 	// 确保获取的用户与令牌中的用户匹配
-	if uint(userID.(uint)) != user.ID {
+	if userID != user.UserID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Unauthorized access to user profile"})
 		return
 	}

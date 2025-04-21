@@ -7,6 +7,7 @@ import (
 // User 用户模型（MySQL）
 type UserMySQL struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
+	UserID    string    `json:"user_id" gorm:"size:100;not null;unique"` // 新增 UserID 字段
 	Username  string    `json:"username" gorm:"size:50;not null;unique"`
 	Email     string    `json:"email" gorm:"size:100;not null;unique"`
 	Password  string    `json:"-" gorm:"size:100;not null"` // 不在JSON中返回密码

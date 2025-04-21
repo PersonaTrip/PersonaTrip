@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"personatrip/internal/models"
 	"personatrip/internal/services"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // TripHandler 处理旅行相关的请求
@@ -149,7 +149,7 @@ func (h *TripHandler) GetUserTripPlans(c *gin.Context) {
 
 	plans, err := h.repository.GetTripPlansByUserID(c, userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get trip plans"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get trip plans" + err.Error()})
 		return
 	}
 
