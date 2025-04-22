@@ -34,8 +34,8 @@ func (s *ModelConfigServiceImpl) CreateModelConfig(ctx context.Context, req *mod
 		Name:        req.Name,
 		ModelType:   req.ModelType,
 		ModelName:   req.ModelName,
-		APIKey:      req.APIKey,
-		BaseURL:     req.BaseURL,
+		ApiKey:      req.ApiKey,
+		BaseUrl:     req.BaseUrl,
 		IsActive:    req.IsActive,
 		Temperature: req.Temperature,
 		MaxTokens:   req.MaxTokens,
@@ -72,11 +72,11 @@ func (s *ModelConfigServiceImpl) UpdateModelConfig(ctx context.Context, id uint,
 	if req.ModelName != "" {
 		config.ModelName = req.ModelName
 	}
-	if req.APIKey != "" {
-		config.APIKey = req.APIKey
+	if req.ApiKey != "" {
+		config.ApiKey = req.ApiKey
 	}
-	if req.BaseURL != "" {
-		config.BaseURL = req.BaseURL
+	if req.BaseUrl != "" {
+		config.BaseUrl = req.BaseUrl
 	}
 	config.IsActive = req.IsActive
 	if req.Temperature != 0 {

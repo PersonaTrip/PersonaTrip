@@ -8,13 +8,13 @@ import (
 
 // Config 应用配置
 type Config struct {
-	Environment    string
-	Port           string
-	MongoURI       string
-	MySQLDSN       string
-	JWTSecret      string
-	AutoMigrate    bool   // 是否自动迁移数据库
-	CreateSuperAdmin bool   // 是否创建超级管理员
+	Environment        string
+	Port               string
+	ServerAddress      string
+	MongoURI           string
+	MySQLDSN           string
+	JWTSecret          string
+	CreateSuperAdmin   bool   // 是否创建超级管理员
 	SuperAdminUsername string // 超级管理员用户名
 	SuperAdminPassword string // 超级管理员密码
 	SuperAdminEmail    string // 超级管理员邮箱
@@ -25,18 +25,25 @@ func Load() (*Config, error) {
 	// 加载.env文件，如果存在
 	_ = godotenv.Load()
 
+	port := getEnv("PORT", "8080")
+
 	// 设置默认值
 	cfg := &Config{
-		Environment: getEnv("APP_ENV", "development"),
-		Port:        getEnv("PORT", "8080"),
-		MongoURI:    getEnv("MONGO_URI", "mongodb://localhost:27017/personatrip"),
-		MySQLDSN:    getEnv("MYSQL_DSN", "root:password@tcp(localhost:3306)/personatrip?parseTime=true"),
-		JWTSecret:   getEnv("JWT_SECRET", "your-secret-key"),
-		AutoMigrate: getEnvBool("AUTO_MIGRATE", true),
-		CreateSuperAdmin: getEnvBool("CREATE_SUPER_ADMIN", true),
+		Environment:        getEnv("APP_ENV", "development"),
+		Port:               port,
+		ServerAddress:      ":" + port, // 默认使用Port构建服务器地址
+		MongoURI:           getEnv("MONGO_URI", "mongodb://localhost:27017/personatrip"),
+		MySQLDSN:           getEnv("MYSQL_DSN", "root:password@tcp(localhost:3306)/personatrip?parseTime=true"),
+		JWTSecret:          getEnv("JWT_SECRET", "your-secret-key"),
+		CreateSuperAdmin:   getEnvBool("CREATE_SUPER_ADMIN", true),
 		SuperAdminUsername: getEnv("SUPER_ADMIN_USERNAME", "admin"),
 		SuperAdminPassword: getEnv("SUPER_ADMIN_PASSWORD", "admin123"),
 		SuperAdminEmail:    getEnv("SUPER_ADMIN_EMAIL", "admin@personatrip.com"),
+	}
+
+	// 如果设置了SERVER_ADDRESS环境变量，则覆盖默认值
+	if serverAddr := getEnv("SERVER_ADDRESS", ""); serverAddr != "" {
+		cfg.ServerAddress = serverAddr
 	}
 
 	return cfg, nil

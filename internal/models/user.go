@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// User 用户模型（MySQL）
+// UserMySQL 用户模型（MySQL）
 type UserMySQL struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
 	UserID    string    `json:"user_id" gorm:"size:100;not null;unique"` // 新增 UserID 字段
@@ -13,6 +13,10 @@ type UserMySQL struct {
 	Password  string    `json:"-" gorm:"size:100;not null"` // 不在JSON中返回密码
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (u *UserMySQL) TableName() string {
+	return "users"
 }
 
 // LoginRequest 登录请求

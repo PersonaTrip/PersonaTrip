@@ -12,13 +12,13 @@ type ModelConfig struct {
 	Name        string    `json:"name" gorm:"size:100;not null"`
 	ModelType   string    `json:"model_type" gorm:"size:50;not null"` // openai, ollama, ark, mock
 	ModelName   string    `json:"model_name" gorm:"size:100;not null"`
-	APIKey      string    `json:"api_key" gorm:"size:255"`
-	BaseURL     string    `json:"base_url" gorm:"size:255"`
+	ApiKey      string    `json:"api_key,omitempty" gorm:"size:255"`
+	BaseUrl     string    `json:"base_url,omitempty" gorm:"size:255"`
 	IsActive    bool      `json:"is_active" gorm:"default:false"`
 	Temperature float64   `json:"temperature" gorm:"default:0.7"`
 	MaxTokens   int       `json:"max_tokens" gorm:"default:2000"`
-	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // ToEinoModelType 将字符串类型转换为einosdk.ModelType
@@ -43,12 +43,12 @@ func (m *ModelConfig) GetEinoOptions() []einosdk.ClientOption {
 		einosdk.WithModel(m.ModelName),
 	}
 
-	if m.APIKey != "" {
-		options = append(options, einosdk.WithAPIKey(m.APIKey))
+	if m.ApiKey != "" {
+		options = append(options, einosdk.WithAPIKey(m.ApiKey))
 	}
 
-	if m.BaseURL != "" {
-		options = append(options, einosdk.WithBaseURL(m.BaseURL))
+	if m.BaseUrl != "" {
+		options = append(options, einosdk.WithBaseURL(m.BaseUrl))
 	}
 
 	return options
@@ -60,7 +60,7 @@ type ModelConfigResponse struct {
 	Name        string  `json:"name"`
 	ModelType   string  `json:"model_type"`
 	ModelName   string  `json:"model_name"`
-	BaseURL     string  `json:"base_url,omitempty"`
+	BaseUrl     string  `json:"base_url,omitempty"`
 	IsActive    bool    `json:"is_active"`
 	Temperature float64 `json:"temperature"`
 	MaxTokens   int     `json:"max_tokens"`
@@ -73,7 +73,7 @@ func (m *ModelConfig) ToResponse() ModelConfigResponse {
 		Name:        m.Name,
 		ModelType:   m.ModelType,
 		ModelName:   m.ModelName,
-		BaseURL:     m.BaseURL,
+		BaseUrl:     m.BaseUrl,
 		IsActive:    m.IsActive,
 		Temperature: m.Temperature,
 		MaxTokens:   m.MaxTokens,
@@ -85,8 +85,8 @@ type ModelConfigCreateRequest struct {
 	Name        string  `json:"name" binding:"required"`
 	ModelType   string  `json:"model_type" binding:"required,oneof=openai ollama ark mock"`
 	ModelName   string  `json:"model_name" binding:"required"`
-	APIKey      string  `json:"api_key"`
-	BaseURL     string  `json:"base_url"`
+	ApiKey      string  `json:"api_key"`
+	BaseUrl     string  `json:"base_url"`
 	IsActive    bool    `json:"is_active"`
 	Temperature float64 `json:"temperature"`
 	MaxTokens   int     `json:"max_tokens"`
@@ -97,8 +97,58 @@ type ModelConfigUpdateRequest struct {
 	Name        string  `json:"name"`
 	ModelType   string  `json:"model_type" binding:"omitempty,oneof=openai ollama ark mock"`
 	ModelName   string  `json:"model_name"`
-	APIKey      string  `json:"api_key"`
-	BaseURL     string  `json:"base_url"`
+	ApiKey      string  `json:"api_key"`
+	BaseUrl     string  `json:"base_url"`
+	IsActive    bool    `json:"is_active"`
+	Temperature float64 `json:"temperature"`
+	MaxTokens   int     `json:"max_tokens"`
+}
+
+// ModelConfigListItem 模型配置列表项
+type ModelConfigListItem struct {
+	ID          uint    `json:"id"`
+	Name        string  `json:"name"`
+	ModelType   string  `json:"model_type"`
+	ModelName   string  `json:"model_name"`
+	BaseUrl     string  `json:"base_url,omitempty"`
+	IsActive    bool    `json:"is_active"`
+	Temperature float64 `json:"temperature"`
+	MaxTokens   int     `json:"max_tokens"`
+}
+
+// ToListItem 转换为列表项
+func (m *ModelConfig) ToListItem() ModelConfigListItem {
+	return ModelConfigListItem{
+		ID:          m.ID,
+		Name:        m.Name,
+		ModelType:   m.ModelType,
+		ModelName:   m.ModelName,
+		BaseUrl:     m.BaseUrl,
+		IsActive:    m.IsActive,
+		Temperature: m.Temperature,
+		MaxTokens:   m.MaxTokens,
+	}
+}
+
+// CreateModelConfigRequest 创建模型配置请求
+type CreateModelConfigRequest struct {
+	Name        string  `json:"name" binding:"required"`
+	ModelType   string  `json:"model_type" binding:"required,oneof=openai ollama ark mock"`
+	ModelName   string  `json:"model_name" binding:"required"`
+	ApiKey      string  `json:"api_key"`
+	BaseUrl     string  `json:"base_url"`
+	IsActive    bool    `json:"is_active"`
+	Temperature float64 `json:"temperature"`
+	MaxTokens   int     `json:"max_tokens"`
+}
+
+// UpdateModelConfigRequest 更新模型配置请求
+type UpdateModelConfigRequest struct {
+	Name        string  `json:"name"`
+	ModelType   string  `json:"model_type" binding:"omitempty,oneof=openai ollama ark mock"`
+	ModelName   string  `json:"model_name"`
+	ApiKey      string  `json:"api_key"`
+	BaseUrl     string  `json:"base_url"`
 	IsActive    bool    `json:"is_active"`
 	Temperature float64 `json:"temperature"`
 	MaxTokens   int     `json:"max_tokens"`

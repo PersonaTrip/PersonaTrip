@@ -6,15 +6,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Admin 表示系统管理员
+// Admin 管理员模型
 type Admin struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
-	Username  string    `json:"username" gorm:"size:50;uniqueIndex;not null"`
-	Password  string    `json:"-" gorm:"size:100;not null"` // 不在JSON中显示密码
-	Email     string    `json:"email" gorm:"size:100;uniqueIndex;not null"`
-	Role      string    `json:"role" gorm:"size:20;default:'admin'"` // admin, super_admin
-	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	Username  string    `json:"username" gorm:"size:50;not null;unique"`
+	Email     string    `json:"email" gorm:"size:100;not null;unique"`
+	Password  string    `json:"-" gorm:"size:100;not null"` // 不在JSON中返回密码
+	Role      string    `json:"role" gorm:"size:20;not null;default:admin"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // SetPassword 设置加密后的密码

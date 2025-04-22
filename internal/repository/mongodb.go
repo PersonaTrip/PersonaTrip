@@ -5,19 +5,19 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"personatrip/internal/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"personatrip/internal/models"
 )
 
 // MongoDB 实现数据存储
 type MongoDB struct {
-	client     *mongo.Client
-	database   *mongo.Database
-	users      *mongo.Collection
-	tripPlans  *mongo.Collection
+	client    *mongo.Client
+	database  *mongo.Database
+	users     *mongo.Collection
+	tripPlans *mongo.Collection
 }
 
 // NewMongoDB 创建新的MongoDB存储实例

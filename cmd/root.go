@@ -9,10 +9,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"personatrip/internal/api"
+	"personatrip/internal/app"
 	"personatrip/internal/config"
 	"personatrip/internal/middleware"
+
+	"github.com/gin-gonic/gin"
 )
 
 // Execute 启动服务器并处理优雅关闭
@@ -28,24 +29,21 @@ func Execute() error {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// 创建路由
-	router := gin.Default()
-	
+	// 初始化应用程序
+	application := app.New()
+
 	// 添加CORS中间件，允许所有跨域请求
-	router.Use(middleware.CORS())
-	
-	// 注册API路由
-	api.RegisterRoutes(router)
+	application.Router.Use(middleware.CORS())
 
 	// 创建HTTP服务器
 	srv := &http.Server{
-		Addr:    ":" + cfg.Port,
-		Handler: router,
+		Addr:    cfg.ServerAddress,
+		Handler: application.Router,
 	}
 
 	// 在goroutine中启动服务器
 	go func() {
-		log.Printf("Server starting on port %s", cfg.Port)
+		log.Printf("Server starting on %s", cfg.ServerAddress)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)
 		}

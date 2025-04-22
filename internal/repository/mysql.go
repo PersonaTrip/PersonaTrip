@@ -1,120 +1,74 @@
 package repository
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	_ "github.com/go-sql-driver/mysql"
-	"golang.org/x/crypto/bcrypt"
 	"personatrip/internal/models"
+
+	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
-// MySQL 实现用户数据存储
+// MySQL 实现用户数据存储，基于GORM
 type MySQL struct {
-	DB *sql.DB // 公开的数据库连接，可以被其他仓库使用
+	DB *gorm.DB // 公开的GORM数据库连接，可以被其他仓库使用
 }
 
 // NewMySQL 创建新的MySQL存储实例
 func NewMySQL(dsn string) (*MySQL, error) {
-	db, err := sql.Open("mysql", dsn)
+	// 使用GORM连接数据库
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return nil, err
+	}
+
+	// 获取并配置底层的SQL DB连接池
+	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, err
 	}
 
 	// 设置连接池参数
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(time.Hour)
+	sqlDB.SetMaxOpenConns(10)
+	sqlDB.SetMaxIdleConns(5)
+	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	// 检查连接
-	if err := db.Ping(); err != nil {
-		return nil, err
-	}
-
-	// 创建用户表（如果不存在）
-	if err := createTables(db); err != nil {
+	// 自动迁移数据库表结构
+	if err := autoMigrate(db); err != nil {
 		return nil, err
 	}
 
 	return &MySQL{DB: db}, nil
 }
 
-// 创建必要的表
-func createTables(db *sql.DB) error {
-	// 创建用户表
-	userTable := `
-	CREATE TABLE IF NOT EXISTS users (
-		id INT AUTO_INCREMENT PRIMARY KEY,
-		user_id VARCHAR (100) NOT NULL UNIQUE,
-		username VARCHAR(50) NOT NULL UNIQUE,
-		email VARCHAR(100) NOT NULL UNIQUE,
-		password VARCHAR(100) NOT NULL,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-	);`
-
-	_, err := db.Exec(userTable)
-	if err != nil {
-		return err
-	}
-
-	// 创建管理员表
-	adminTable := `
-	CREATE TABLE IF NOT EXISTS admins (
-		id INT AUTO_INCREMENT PRIMARY KEY,
-		username VARCHAR(50) NOT NULL UNIQUE,
-		email VARCHAR(100) NOT NULL UNIQUE,
-		password VARCHAR(100) NOT NULL,
-		role VARCHAR(20) NOT NULL DEFAULT 'admin',
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-	);`
-
-	_, err = db.Exec(adminTable)
-	if err != nil {
-		return err
-	}
-
-	// 创建模型配置表
-	modelConfigTable := `
-	CREATE TABLE IF NOT EXISTS model_configs (
-		id INT AUTO_INCREMENT PRIMARY KEY,
-		name VARCHAR(100) NOT NULL,
-		model_type VARCHAR(50) NOT NULL,
-		model_name VARCHAR(100) NOT NULL,
-		api_key VARCHAR(255),
-		base_url VARCHAR(255),
-		is_active BOOLEAN DEFAULT FALSE,
-		temperature FLOAT DEFAULT 0.7,
-		max_tokens INT DEFAULT 2000,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-	);`
-
-	_, err = db.Exec(modelConfigTable)
+// 自动迁移数据库表结构
+func autoMigrate(db *gorm.DB) error {
+	// 自动迁移用户和管理员表
+	err := db.AutoMigrate(
+		&models.UserMySQL{},
+		&models.Admin{},
+		&models.ModelConfig{},
+	)
 	return err
-}
-
-// AutoMigrate 自动迁移数据库表
-func (m *MySQL) AutoMigrate(models ...interface{}) error {
-	// 我们已经在createTables函数中创建了表，这里只是一个占位符
-	// 如果需要添加其他表或字段，可以在createTables函数中添加
-	return nil
 }
 
 // Close 关闭数据库连接
 func (m *MySQL) Close() error {
-	return m.DB.Close()
+	sqlDB, err := m.DB.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.Close()
 }
 
 // CreateUser 创建新用户
 func (m *MySQL) CreateUser(ctx *gin.Context, user *models.UserMySQL) (*models.UserMySQL, error) {
 	// 检查用户名是否已存在
-	var count int
-	err := m.DB.QueryRow("SELECT COUNT(*) FROM users WHERE username = ?", user.Username).Scan(&count)
-	if err != nil {
+	var count int64
+	if err := m.DB.Model(&models.UserMySQL{}).Where("username = ?", user.Username).Count(&count).Error; err != nil {
 		return nil, err
 	}
 	if count > 0 {
@@ -122,8 +76,7 @@ func (m *MySQL) CreateUser(ctx *gin.Context, user *models.UserMySQL) (*models.Us
 	}
 
 	// 检查邮箱是否已存在
-	err = m.DB.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", user.Email).Scan(&count)
-	if err != nil {
+	if err := m.DB.Model(&models.UserMySQL{}).Where("email = ?", user.Email).Count(&count).Error; err != nil {
 		return nil, err
 	}
 	if count > 0 {
@@ -136,48 +89,33 @@ func (m *MySQL) CreateUser(ctx *gin.Context, user *models.UserMySQL) (*models.Us
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	// 插入用户
-	query := `
-	INSERT INTO users (username, user_id, email, password, created_at, updated_at)
-	VALUES (?, ?, ?, ?, NOW(), NOW())`
+	// 设置加密后的密码
+	user.Password = string(hashedPassword)
 
-	result, err := m.DB.Exec(query, user.Username, user.UserID, user.Email, string(hashedPassword))
-	if err != nil {
+	// 使用GORM创建用户
+	if err := m.DB.Create(user).Error; err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	// 获取插入的ID
-	id, err := result.LastInsertId()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get last insert ID: %w", err)
-	}
-
-	user.ID = uint(id)
-	user.Password = "" // 清除密码
-	return user, nil
+	// 返回前清除密码
+	userCopy := *user
+	userCopy.Password = ""
+	return &userCopy, nil
 }
 
 // GetUserByID 通过ID获取用户
 func (m *MySQL) GetUserByID(ctx *gin.Context, userID string) (*models.UserMySQL, error) {
 	var user models.UserMySQL
 
-	row := m.DB.QueryRow(
-		"SELECT id, user_id, username, email, created_at, updated_at FROM users WHERE user_id = ?",
-		userID,
-	)
-	err := row.Scan(
-		&user.ID,
-		&user.UserID,
-		&user.Username,
-		&user.Email,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
+	result := m.DB.Select("id, user_id, username, email, created_at, updated_at").
+		Where("user_id = ?", userID).
+		First(&user)
+
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("user not found")
 		}
-		return nil, fmt.Errorf("failed to get user: %w", err)
+		return nil, fmt.Errorf("failed to get user: %w", result.Error)
 	}
 
 	return &user, nil
@@ -187,24 +125,13 @@ func (m *MySQL) GetUserByID(ctx *gin.Context, userID string) (*models.UserMySQL,
 func (m *MySQL) GetUserByUsername(ctx *gin.Context, username string) (*models.UserMySQL, error) {
 	var user models.UserMySQL
 
-	row := m.DB.QueryRow(
-		"SELECT id, user_id, username, email, password, created_at, updated_at FROM users WHERE username = ?",
-		username,
-	)
-	err := row.Scan(
-		&user.ID,
-		&user.UserID,
-		&user.Username,
-		&user.Email,
-		&user.Password,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
+	result := m.DB.Where("username = ?", username).First(&user)
+
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("user not found")
 		}
-		return nil, fmt.Errorf("failed to get user: %w", err)
+		return nil, fmt.Errorf("failed to get user: %w", result.Error)
 	}
 
 	return &user, nil

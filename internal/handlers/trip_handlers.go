@@ -1,18 +1,28 @@
 package handlers
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"time"
 
+	"personatrip/internal/models"
+
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"personatrip/internal/models"
-	"personatrip/internal/services"
 )
+
+// EinoServiceInterface 定义Eino服务接口
+type EinoServiceInterface interface {
+	GenerateTripPlan(ctx context.Context, req *models.PlanRequest) (*models.TripPlan, error)
+	GenerateDestinationRecommendations(ctx context.Context, preferences *models.UserPreferences) ([]string, error)
+	TestGenerateText(ctx context.Context, prompt string) (string, error)
+	RefreshModelConfig(ctx context.Context) error
+}
 
 // TripHandler 处理旅行相关的请求
 type TripHandler struct {
-	einoService *services.EinoService
+	einoService EinoServiceInterface
 	repository  TripRepository
 }
 
@@ -26,7 +36,7 @@ type TripRepository interface {
 }
 
 // NewTripHandler 创建新的旅行处理程序
-func NewTripHandler(einoService *services.EinoService, repository TripRepository) *TripHandler {
+func NewTripHandler(einoService EinoServiceInterface, repository TripRepository) *TripHandler {
 	return &TripHandler{
 		einoService: einoService,
 		repository:  repository,
@@ -58,7 +68,7 @@ func (h *TripHandler) GenerateTripPlan(c *gin.Context) {
 	}
 
 	// 调用Eino服务生成旅行计划
-	plan, err := h.einoService.GenerateTripPlan(c, &req)
+	plan, err := h.einoService.GenerateTripPlan(c.Request.Context(), &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate trip plan"})
 		return
@@ -146,7 +156,7 @@ func (h *TripHandler) GetUserTripPlans(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
-
+	fmt.Println(userID)
 	plans, err := h.repository.GetTripPlansByUserID(c, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get trip plans" + err.Error()})
@@ -297,7 +307,7 @@ func (h *TripHandler) GenerateDestinationRecommendations(c *gin.Context) {
 	}
 
 	// 调用Eino服务生成推荐
-	recommendations, err := h.einoService.GenerateDestinationRecommendations(c, &preferences)
+	recommendations, err := h.einoService.GenerateDestinationRecommendations(c.Request.Context(), &preferences)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate recommendations"})
 		return

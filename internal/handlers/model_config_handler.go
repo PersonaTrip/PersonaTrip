@@ -4,19 +4,20 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"personatrip/internal/models"
 	"personatrip/internal/services"
+
+	"github.com/gin-gonic/gin"
 )
 
 // ModelConfigHandler 处理模型配置相关的请求
 type ModelConfigHandler struct {
 	configService services.ModelConfigService
-	einoService   *services.EinoService
+	einoService   EinoServiceInterface
 }
 
 // NewModelConfigHandler 创建新的模型配置处理器
-func NewModelConfigHandler(configService services.ModelConfigService, einoService *services.EinoService) *ModelConfigHandler {
+func NewModelConfigHandler(configService services.ModelConfigService, einoService EinoServiceInterface) *ModelConfigHandler {
 	return &ModelConfigHandler{
 		configService: configService,
 		einoService:   einoService,
