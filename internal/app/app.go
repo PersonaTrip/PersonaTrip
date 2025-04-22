@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 
-	"github.com/gin-gonic/gin"
 	"personatrip/internal/api"
 	"personatrip/internal/config"
 	"personatrip/internal/handlers"
@@ -12,6 +11,8 @@ import (
 	"personatrip/internal/models"
 	"personatrip/internal/repository"
 	"personatrip/internal/services"
+
+	"github.com/gin-gonic/gin"
 )
 
 // Application 表示应用程序实例
@@ -70,6 +71,9 @@ func New() *Application {
 	// 创建超级管理员（如果配置了）
 	app.createSuperAdminIfNeeded()
 
+	// 创建默认的大模型配置
+	app.createDefaultModelConfigIfNeeded()
+
 	return app
 }
 
@@ -92,7 +96,6 @@ func (a *Application) initRepositories() {
 	a.Repositories.ModelConfigRepo = repository.NewGormModelConfigRepository(mysqlDB.DB)
 
 	// 初始化MongoDB存储层或内存存储
-	log.Printf(a.Cfg.MongoURI)
 	mongoDB, err := repository.NewMongoDB(a.Cfg.MongoURI)
 	if err != nil {
 		// 如果MongoDB连接失败，使用内存存储
@@ -162,6 +165,43 @@ func (a *Application) createSuperAdminIfNeeded() {
 				log.Println("Super admin created successfully")
 			}
 		}
+	}
+}
+
+// createDefaultModelConfigIfNeeded 如果不存在，创建默认的大模型配置
+func (a *Application) createDefaultModelConfigIfNeeded() {
+	log.Println("正在检查默认大模型配置...")
+
+	// 尝试获取配置列表
+	configs, err := a.Services.ModelConfigService.GetAllModelConfigs(context.Background())
+	if err != nil {
+		log.Printf("获取模型配置失败: %v", err)
+		return
+	}
+
+	// 如果没有任何配置，创建默认配置
+	if len(configs) == 0 {
+		log.Println("创建默认大模型配置...")
+		// 创建默认的ARK大模型配置
+		defaultConfig := &models.ModelConfigCreateRequest{
+			Name:        "默认ARK配置",
+			ModelType:   "ark",
+			ModelName:   "ep-20250408220714-wzgtv",
+			ApiKey:      "106dc02a-bd3b-41cb-a739-4e7301f48385",
+			BaseUrl:     "https://ark.cn-beijing.volces.com/api/v3",
+			IsActive:    true,
+			Temperature: 0.7,
+			MaxTokens:   2000,
+		}
+
+		config, err := a.Services.ModelConfigService.CreateModelConfig(context.Background(), defaultConfig)
+		if err != nil {
+			log.Printf("创建默认大模型配置失败: %v", err)
+		} else {
+			log.Printf("默认大模型配置创建成功，ID: %d", config.ID)
+		}
+	} else {
+		log.Println("已存在大模型配置，跳过创建默认配置")
 	}
 }
 

@@ -15,7 +15,7 @@ type ModelConfig struct {
 	ApiKey      string    `json:"api_key,omitempty" gorm:"size:255"`
 	BaseUrl     string    `json:"base_url,omitempty" gorm:"size:255"`
 	IsActive    bool      `json:"is_active" gorm:"default:false"`
-	Temperature float64   `json:"temperature" gorm:"default:0.7"`
+	Temperature float32   `json:"temperature" gorm:"default:0.7"`
 	MaxTokens   int       `json:"max_tokens" gorm:"default:2000"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -62,7 +62,7 @@ type ModelConfigResponse struct {
 	ModelName   string  `json:"model_name"`
 	BaseUrl     string  `json:"base_url,omitempty"`
 	IsActive    bool    `json:"is_active"`
-	Temperature float64 `json:"temperature"`
+	Temperature float32 `json:"temperature"`
 	MaxTokens   int     `json:"max_tokens"`
 }
 
@@ -88,7 +88,7 @@ type ModelConfigCreateRequest struct {
 	ApiKey      string  `json:"api_key"`
 	BaseUrl     string  `json:"base_url"`
 	IsActive    bool    `json:"is_active"`
-	Temperature float64 `json:"temperature"`
+	Temperature float32 `json:"temperature"`
 	MaxTokens   int     `json:"max_tokens"`
 }
 
@@ -100,7 +100,7 @@ type ModelConfigUpdateRequest struct {
 	ApiKey      string  `json:"api_key"`
 	BaseUrl     string  `json:"base_url"`
 	IsActive    bool    `json:"is_active"`
-	Temperature float64 `json:"temperature"`
+	Temperature float32 `json:"temperature"`
 	MaxTokens   int     `json:"max_tokens"`
 }
 
@@ -112,7 +112,7 @@ type ModelConfigListItem struct {
 	ModelName   string  `json:"model_name"`
 	BaseUrl     string  `json:"base_url,omitempty"`
 	IsActive    bool    `json:"is_active"`
-	Temperature float64 `json:"temperature"`
+	Temperature float32 `json:"temperature"`
 	MaxTokens   int     `json:"max_tokens"`
 }
 

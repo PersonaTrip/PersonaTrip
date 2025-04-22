@@ -1,12 +1,13 @@
 package handlers
 
 import (
-	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"personatrip/internal/models"
 	"personatrip/internal/services"
+	"personatrip/internal/utils/httputil"
+
+	"github.com/gin-gonic/gin"
 )
 
 // AdminHandler 处理管理员相关的请求
@@ -25,34 +26,34 @@ func NewAdminHandler(adminService services.AdminService) *AdminHandler {
 func (h *AdminHandler) Login(c *gin.Context) {
 	var req models.AdminLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.ReturnBadRequest(c, err.Error())
 		return
 	}
 
 	token, err := h.adminService.Login(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		httputil.ReturnUnauthorized(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	httputil.ReturnSuccessWithData(c, "管理员登录成功", map[string]string{"token": token})
 }
 
 // Create 创建新管理员
 func (h *AdminHandler) Create(c *gin.Context) {
 	var req models.AdminCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.ReturnBadRequest(c, err.Error())
 		return
 	}
 
 	admin, err := h.adminService.CreateAdmin(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.ReturnInternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusCreated, admin.ToResponse())
+	httputil.ReturnCreated(c, "管理员创建成功", admin.ToResponse())
 }
 
 // Update 更新管理员信息
@@ -60,23 +61,23 @@ func (h *AdminHandler) Update(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		httputil.ReturnBadRequest(c, "无效的ID")
 		return
 	}
 
 	var req models.AdminUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.ReturnBadRequest(c, err.Error())
 		return
 	}
 
 	admin, err := h.adminService.UpdateAdmin(c.Request.Context(), uint(id), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.ReturnInternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, admin.ToResponse())
+	httputil.ReturnSuccessWithBean(c, "管理员更新成功", admin.ToResponse())
 }
 
 // Delete 删除管理员
@@ -84,16 +85,16 @@ func (h *AdminHandler) Delete(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		httputil.ReturnBadRequest(c, "无效的ID")
 		return
 	}
 
 	if err := h.adminService.DeleteAdmin(c.Request.Context(), uint(id)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.ReturnInternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "admin deleted successfully"})
+	httputil.ReturnSuccess(c, "管理员删除成功")
 }
 
 // GetByID 根据ID获取管理员
@@ -101,24 +102,24 @@ func (h *AdminHandler) GetByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		httputil.ReturnBadRequest(c, "无效的ID")
 		return
 	}
 
 	admin, err := h.adminService.GetAdminByID(c.Request.Context(), uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.ReturnNotFound(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, admin.ToResponse())
+	httputil.ReturnSuccessWithBean(c, "获取管理员成功", admin.ToResponse())
 }
 
 // GetAll 获取所有管理员
 func (h *AdminHandler) GetAll(c *gin.Context) {
 	admins, err := h.adminService.GetAllAdmins(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.ReturnInternalError(c, err.Error())
 		return
 	}
 
@@ -127,5 +128,5 @@ func (h *AdminHandler) GetAll(c *gin.Context) {
 		response = append(response, admin.ToResponse())
 	}
 
-	c.JSON(http.StatusOK, response)
+	httputil.ReturnSuccessWithList(c, "获取所有管理员成功", response)
 }

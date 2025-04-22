@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"net/http"
 	"strconv"
 
 	"personatrip/internal/models"
 	"personatrip/internal/services"
+	"personatrip/internal/utils/httputil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,13 +28,13 @@ func NewModelConfigHandler(configService services.ModelConfigService, einoServic
 func (h *ModelConfigHandler) Create(c *gin.Context) {
 	var req models.ModelConfigCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.ReturnBadRequest(c, err.Error())
 		return
 	}
 
 	config, err := h.configService.CreateModelConfig(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.ReturnInternalError(c, err.Error())
 		return
 	}
 
@@ -43,7 +43,7 @@ func (h *ModelConfigHandler) Create(c *gin.Context) {
 		h.einoService.RefreshModelConfig(c.Request.Context())
 	}
 
-	c.JSON(http.StatusCreated, config.ToResponse())
+	httputil.ReturnCreated(c, "模型配置创建成功", config.ToResponse())
 }
 
 // Update 更新模型配置
@@ -51,19 +51,19 @@ func (h *ModelConfigHandler) Update(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		httputil.ReturnBadRequest(c, "无效的ID")
 		return
 	}
 
 	var req models.ModelConfigUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.ReturnBadRequest(c, err.Error())
 		return
 	}
 
 	config, err := h.configService.UpdateModelConfig(c.Request.Context(), uint(id), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.ReturnInternalError(c, err.Error())
 		return
 	}
 
@@ -72,7 +72,7 @@ func (h *ModelConfigHandler) Update(c *gin.Context) {
 		h.einoService.RefreshModelConfig(c.Request.Context())
 	}
 
-	c.JSON(http.StatusOK, config.ToResponse())
+	httputil.ReturnSuccessWithBean(c, "模型配置更新成功", config.ToResponse())
 }
 
 // Delete 删除模型配置
@@ -80,16 +80,16 @@ func (h *ModelConfigHandler) Delete(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		httputil.ReturnBadRequest(c, "无效的ID")
 		return
 	}
 
 	if err := h.configService.DeleteModelConfig(c.Request.Context(), uint(id)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.ReturnInternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "model configuration deleted successfully"})
+	httputil.ReturnSuccess(c, "模型配置删除成功")
 }
 
 // GetByID 根据ID获取模型配置
@@ -97,24 +97,24 @@ func (h *ModelConfigHandler) GetByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		httputil.ReturnBadRequest(c, "无效的ID")
 		return
 	}
 
 	config, err := h.configService.GetModelConfigByID(c.Request.Context(), uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.ReturnNotFound(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, config.ToResponse())
+	httputil.ReturnSuccessWithBean(c, "获取模型配置成功", config.ToResponse())
 }
 
 // GetAll 获取所有模型配置
 func (h *ModelConfigHandler) GetAll(c *gin.Context) {
 	configs, err := h.configService.GetAllModelConfigs(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.ReturnInternalError(c, err.Error())
 		return
 	}
 
@@ -123,18 +123,18 @@ func (h *ModelConfigHandler) GetAll(c *gin.Context) {
 		response = append(response, config.ToResponse())
 	}
 
-	c.JSON(http.StatusOK, response)
+	httputil.ReturnSuccessWithList(c, "获取所有模型配置成功", response)
 }
 
 // GetActive 获取当前活跃的模型配置
 func (h *ModelConfigHandler) GetActive(c *gin.Context) {
 	config, err := h.configService.GetActiveModelConfig(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.ReturnNotFound(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, config.ToResponse())
+	httputil.ReturnSuccessWithBean(c, "获取当前活跃的模型配置成功", config.ToResponse())
 }
 
 // SetActive 设置指定ID的配置为活跃
@@ -142,19 +142,27 @@ func (h *ModelConfigHandler) SetActive(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		httputil.ReturnBadRequest(c, "无效的ID")
 		return
 	}
 
-	if err := h.configService.SetActiveModelConfig(c.Request.Context(), uint(id)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	err = h.configService.SetActiveModelConfig(c.Request.Context(), uint(id))
+	if err != nil {
+		httputil.ReturnInternalError(c, err.Error())
 		return
 	}
 
 	// 刷新Eino服务的模型配置
 	h.einoService.RefreshModelConfig(c.Request.Context())
 
-	c.JSON(http.StatusOK, gin.H{"message": "model configuration activated successfully"})
+	// 获取更新后的配置
+	config, err := h.configService.GetModelConfigByID(c.Request.Context(), uint(id))
+	if err != nil {
+		httputil.ReturnInternalError(c, err.Error())
+		return
+	}
+
+	httputil.ReturnSuccessWithBean(c, "模型配置激活成功", config.ToResponse())
 }
 
 // TestModel 测试模型配置
@@ -162,7 +170,7 @@ func (h *ModelConfigHandler) TestModel(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		httputil.ReturnBadRequest(c, "无效的ID")
 		return
 	}
 
@@ -170,14 +178,14 @@ func (h *ModelConfigHandler) TestModel(c *gin.Context) {
 		Prompt string `json:"prompt" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.ReturnBadRequest(c, err.Error())
 		return
 	}
 
 	// 获取指定ID的模型配置
 	config, err := h.configService.GetModelConfigByID(c.Request.Context(), uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.ReturnNotFound(c, err.Error())
 		return
 	}
 
@@ -187,9 +195,9 @@ func (h *ModelConfigHandler) TestModel(c *gin.Context) {
 	// 测试生成文本
 	result, err := client.TestGenerateText(c.Request.Context(), req.Prompt)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.ReturnInternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"result": result})
+	httputil.ReturnSuccessWithData(c, "模型测试成功", map[string]string{"result": result})
 }

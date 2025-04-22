@@ -39,7 +39,6 @@ func (s *AuthService) Register(ctx *gin.Context, req *models.RegisterRequest) (*
 	// 创建用户
 	userMongoID := primitive.NewObjectID()
 	userID := userMongoID.Hex()
-	fmt.Println(userID)
 	user := &models.UserMySQL{
 		Username: req.Username,
 		Email:    req.Email,
@@ -129,7 +128,6 @@ func (s *AuthService) GetUserFromToken(ctx *gin.Context, tokenString string) (*m
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(userID)
 	// 获取用户
 	return s.userRepo.GetUserByID(ctx, userID)
 }

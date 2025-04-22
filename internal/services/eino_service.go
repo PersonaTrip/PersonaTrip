@@ -26,13 +26,12 @@ func NewEinoService(configService ModelConfigService) *EinoService {
 			Temperature: 0.7,
 		},
 	}
-	
+
 	// 初始化时尝试加载激活的模型配置
 	service.RefreshModelConfig(context.Background())
-	
+
 	return service
 }
-
 
 // NewEinoServiceWithConfig 根据指定的模型配置创建新的Eino服务实例
 func NewEinoServiceWithConfig(config *models.ModelConfig) *EinoService {
@@ -43,13 +42,13 @@ func NewEinoServiceWithConfig(config *models.ModelConfig) *EinoService {
 			Temperature: config.Temperature,
 		},
 	}
-	
+
 	// 创建Eino客户端
 	service.client = einosdk.NewClient(
 		config.ToEinoModelType(),
 		config.GetEinoOptions()...,
 	)
-	
+
 	return service
 }
 
@@ -74,23 +73,23 @@ func (s *EinoService) RefreshModelConfig(ctx context.Context) error {
 	config, err := s.configService.GetActiveModelConfig(ctx)
 	if err != nil {
 		// 如果没有激活的配置，使用Mock模型
-		s.client = einosdk.NewClient(einosdk.ModelTypeMock)
+		s.client = einosdk.NewClient(einosdk.ModelTypeArk)
 		return err
 	}
-	
+
 	// 更新激活的配置
 	s.activeConfig = config
-	
+
 	// 更新默认选项
 	s.defaultOptions.MaxTokens = config.MaxTokens
 	s.defaultOptions.Temperature = config.Temperature
-	
+
 	// 创建Eino客户端
 	s.client = einosdk.NewClient(
 		config.ToEinoModelType(),
 		config.GetEinoOptions()...,
 	)
-	
+
 	return nil
 }
 
@@ -98,7 +97,7 @@ func (s *EinoService) RefreshModelConfig(ctx context.Context) error {
 func (s *EinoService) GenerateTripPlan(ctx context.Context, req *models.PlanRequest) (*models.TripPlan, error) {
 	// 刷新模型配置，确保使用最新的配置
 	s.RefreshModelConfig(ctx)
-	
+
 	// 构建提示词
 	prompt := buildTripPlanPrompt(req)
 
@@ -216,7 +215,7 @@ func buildTripPlanPrompt(req *models.PlanRequest) string {
 // 解析大模型返回的旅行计划
 func parseTripPlanResponse(response string) (*models.TripPlan, error) {
 	var plan models.TripPlan
-	
+
 	// 尝试直接解析JSON
 	err := json.Unmarshal([]byte(response), &plan)
 	if err != nil {
@@ -224,7 +223,7 @@ func parseTripPlanResponse(response string) (*models.TripPlan, error) {
 		// 这里可以添加更复杂的逻辑来处理非标准JSON响应
 		return nil, fmt.Errorf("failed to parse JSON response: %w", err)
 	}
-	
+
 	return &plan, nil
 }
 
@@ -253,9 +252,9 @@ func (s *EinoService) GenerateDestinationRecommendations(ctx context.Context, pr
 
 	// 调用Eino API
 	response, err := s.client.GenerateText(ctx, &einosdk.GenerateTextRequest{
-		Model:    "eino-large",  // 使用适当的模型名称
-		Prompt:   prompt,
-		MaxTokens: 1000,
+		Model:       "eino-large", // 使用适当的模型名称
+		Prompt:      prompt,
+		MaxTokens:   1000,
 		Temperature: 0.7,
 	})
 	if err != nil {

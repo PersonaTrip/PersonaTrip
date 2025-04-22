@@ -3,10 +3,11 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"net/http"
+	"log"
 	"time"
 
 	"personatrip/internal/models"
+	"personatrip/internal/utils/httputil"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -50,27 +51,28 @@ func NewTripHandler(einoService EinoServiceInterface, repository TripRepository)
 // @Accept json
 // @Produce json
 // @Param request body models.PlanRequest true "旅行计划请求"
-// @Success 200 {object} models.TripPlan
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 200 {object} models.ApiResponse
+// @Failure 400 {object} models.ApiResponse
+// @Failure 500 {object} models.ApiResponse
 // @Router /api/trips/generate [post]
 func (h *TripHandler) GenerateTripPlan(c *gin.Context) {
 	var req models.PlanRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		httputil.ReturnBadRequest(c, "无效的请求格式")
 		return
 	}
-
+	fmt.Println(req)
 	// 验证日期
 	if req.StartDate.After(req.EndDate) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Start date cannot be after end date"})
+		httputil.ReturnBadRequest(c, "开始日期不能晚于结束日期")
 		return
 	}
 
 	// 调用Eino服务生成旅行计划
 	plan, err := h.einoService.GenerateTripPlan(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate trip plan"})
+		log.Println(err)
+		httputil.ReturnInternalError(c, "生成旅行计划失败")
 		return
 	}
 
@@ -78,13 +80,13 @@ func (h *TripHandler) GenerateTripPlan(c *gin.Context) {
 	userIDStr := c.GetString("user_id")
 	if userIDStr == "" {
 		// 如果没有认证，可以使用一个默认ID或返回错误
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		httputil.ReturnUnauthorized(c, "用户未认证")
 		return
 	}
 
 	userID, err := primitive.ObjectIDFromHex(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		httputil.ReturnBadRequest(c, "无效的用户ID")
 		return
 	}
 
@@ -97,11 +99,11 @@ func (h *TripHandler) GenerateTripPlan(c *gin.Context) {
 	// 保存到数据库
 	savedPlan, err := h.repository.CreateTripPlan(c, plan)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save trip plan"})
+		httputil.ReturnInternalError(c, "保存旅行计划失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, savedPlan)
+	httputil.ReturnSuccessWithBean(c, "旅行计划生成成功", savedPlan)
 }
 
 // GetTripPlan 获取旅行计划
@@ -111,26 +113,26 @@ func (h *TripHandler) GenerateTripPlan(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path string true "旅行计划ID"
-// @Success 200 {object} models.TripPlan
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 200 {object} models.ApiResponse
+// @Failure 400 {object} models.ApiResponse
+// @Failure 404 {object} models.ApiResponse
+// @Failure 500 {object} models.ApiResponse
 // @Router /api/trips/{id} [get]
 func (h *TripHandler) GetTripPlan(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		httputil.ReturnBadRequest(c, "无效的ID格式")
 		return
 	}
 
 	plan, err := h.repository.GetTripPlanByID(c, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Trip plan not found"})
+		httputil.ReturnNotFound(c, "旅行计划未找到")
 		return
 	}
 
-	c.JSON(http.StatusOK, plan)
+	httputil.ReturnSuccessWithBean(c, "获取旅行计划成功", plan)
 }
 
 // GetUserTripPlans 获取用户的所有旅行计划
@@ -139,31 +141,30 @@ func (h *TripHandler) GetTripPlan(c *gin.Context) {
 // @Tags trips
 // @Accept json
 // @Produce json
-// @Success 200 {array} models.TripPlan
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 200 {object} models.ApiResponse
+// @Failure 400 {object} models.ApiResponse
+// @Failure 500 {object} models.ApiResponse
 // @Router /api/trips/user [get]
 func (h *TripHandler) GetUserTripPlans(c *gin.Context) {
 	// 获取用户ID（假设从认证中间件中获取）
 	userIDStr := c.GetString("user_id")
 	if userIDStr == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		httputil.ReturnUnauthorized(c, "用户未认证")
 		return
 	}
 
 	userID, err := primitive.ObjectIDFromHex(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
-		return
-	}
-	fmt.Println(userID)
-	plans, err := h.repository.GetTripPlansByUserID(c, userID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get trip plans" + err.Error()})
+		httputil.ReturnBadRequest(c, "无效的用户ID")
 		return
 	}
 
-	c.JSON(http.StatusOK, plans)
+	plans, err := h.repository.GetTripPlansByUserID(c, userID)
+	if err != nil {
+		httputil.ReturnInternalError(c, "获取旅行计划失败: "+err.Error())
+		return
+	}
+	httputil.ReturnSuccessWithList(c, "获取用户旅行计划成功", plans)
 }
 
 // UpdateTripPlan 更新旅行计划
@@ -174,49 +175,49 @@ func (h *TripHandler) GetUserTripPlans(c *gin.Context) {
 // @Produce json
 // @Param id path string true "旅行计划ID"
 // @Param plan body models.TripPlan true "更新的旅行计划"
-// @Success 200 {object} models.TripPlan
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 200 {object} models.ApiResponse
+// @Failure 400 {object} models.ApiResponse
+// @Failure 404 {object} models.ApiResponse
+// @Failure 500 {object} models.ApiResponse
 // @Router /api/trips/{id} [put]
 func (h *TripHandler) UpdateTripPlan(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		httputil.ReturnBadRequest(c, "无效的ID格式")
 		return
 	}
 
 	// 检查计划是否存在
 	existingPlan, err := h.repository.GetTripPlanByID(c, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Trip plan not found"})
+		httputil.ReturnNotFound(c, "旅行计划未找到")
 		return
 	}
 
 	// 获取用户ID（假设从认证中间件中获取）
 	userIDStr := c.GetString("user_id")
 	if userIDStr == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		httputil.ReturnUnauthorized(c, "用户未认证")
 		return
 	}
 
 	userID, err := primitive.ObjectIDFromHex(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		httputil.ReturnBadRequest(c, "无效的用户ID")
 		return
 	}
 
 	// 检查是否是用户自己的计划
 	if existingPlan.UserID != userID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized to update this plan"})
+		httputil.ReturnForbidden(c, "无权更新此计划")
 		return
 	}
 
 	// 解析请求体
 	var updatedPlan models.TripPlan
 	if err := c.ShouldBindJSON(&updatedPlan); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		httputil.ReturnBadRequest(c, "无效的请求格式")
 		return
 	}
 
@@ -226,11 +227,11 @@ func (h *TripHandler) UpdateTripPlan(c *gin.Context) {
 
 	// 更新计划
 	if err := h.repository.UpdateTripPlan(c, &updatedPlan); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update trip plan"})
+		httputil.ReturnInternalError(c, "更新旅行计划失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, updatedPlan)
+	httputil.ReturnSuccessWithBean(c, "旅行计划更新成功", updatedPlan)
 }
 
 // DeleteTripPlan 删除旅行计划
@@ -240,52 +241,52 @@ func (h *TripHandler) UpdateTripPlan(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path string true "旅行计划ID"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 200 {object} models.ApiResponse
+// @Failure 400 {object} models.ApiResponse
+// @Failure 404 {object} models.ApiResponse
+// @Failure 500 {object} models.ApiResponse
 // @Router /api/trips/{id} [delete]
 func (h *TripHandler) DeleteTripPlan(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		httputil.ReturnBadRequest(c, "无效的ID格式")
 		return
 	}
 
 	// 检查计划是否存在
 	existingPlan, err := h.repository.GetTripPlanByID(c, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Trip plan not found"})
+		httputil.ReturnNotFound(c, "旅行计划未找到")
 		return
 	}
 
 	// 获取用户ID（假设从认证中间件中获取）
 	userIDStr := c.GetString("user_id")
 	if userIDStr == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		httputil.ReturnUnauthorized(c, "用户未认证")
 		return
 	}
 
 	userID, err := primitive.ObjectIDFromHex(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		httputil.ReturnBadRequest(c, "无效的用户ID")
 		return
 	}
 
 	// 检查是否是用户自己的计划
 	if existingPlan.UserID != userID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized to delete this plan"})
+		httputil.ReturnForbidden(c, "无权删除此计划")
 		return
 	}
 
 	// 删除计划
 	if err := h.repository.DeleteTripPlan(c, id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trip plan"})
+		httputil.ReturnInternalError(c, "删除旅行计划失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Trip plan deleted successfully"})
+	httputil.ReturnSuccess(c, "旅行计划删除成功")
 }
 
 // GenerateDestinationRecommendations 生成目的地推荐
@@ -295,23 +296,23 @@ func (h *TripHandler) DeleteTripPlan(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param preferences body models.UserPreferences true "用户偏好"
-// @Success 200 {array} string
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 200 {object} models.ApiResponse
+// @Failure 400 {object} models.ApiResponse
+// @Failure 500 {object} models.ApiResponse
 // @Router /api/recommendations/destinations [post]
 func (h *TripHandler) GenerateDestinationRecommendations(c *gin.Context) {
 	var preferences models.UserPreferences
 	if err := c.ShouldBindJSON(&preferences); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		httputil.ReturnBadRequest(c, "无效的请求格式")
 		return
 	}
 
 	// 调用Eino服务生成推荐
 	recommendations, err := h.einoService.GenerateDestinationRecommendations(c.Request.Context(), &preferences)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate recommendations"})
+		httputil.ReturnInternalError(c, "生成推荐失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, recommendations)
+	httputil.ReturnSuccessWithList(c, "目的地推荐生成成功", recommendations)
 }

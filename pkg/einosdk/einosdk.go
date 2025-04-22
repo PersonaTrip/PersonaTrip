@@ -9,6 +9,9 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/cloudwego/eino-ext/components/model/ark"
+	"github.com/cloudwego/eino/schema"
 )
 
 // ModelType 表示支持的大模型类型
@@ -59,22 +62,22 @@ func NewClient(modelType ModelType, opts ...ClientOption) *Client {
 		modelType: modelType,
 		model:     getDefaultModel(modelType),
 	}
-	
+
 	// 应用选项
 	for _, opt := range opts {
 		opt(c)
 	}
-	
+
 	// 如果没有设置API密钥，尝试从环境变量获取
 	if c.apiKey == "" {
 		c.apiKey = getAPIKeyFromEnv(modelType)
 	}
-	
+
 	// 如果没有设置基础URL，使用默认值
 	if c.baseURL == "" {
 		c.baseURL = getDefaultBaseURL(modelType)
 	}
-	
+
 	return c
 }
 
@@ -123,7 +126,7 @@ type GenerateTextRequest struct {
 	Model       string  `json:"model"`
 	Prompt      string  `json:"prompt"`
 	MaxTokens   int     `json:"max_tokens"`
-	Temperature float64 `json:"temperature"`
+	Temperature float32 `json:"temperature"`
 }
 
 // GenerateTextResponse 是生成文本的响应
@@ -153,10 +156,10 @@ func (c *Client) generateTextWithOpenAI(ctx context.Context, req *GenerateTextRe
 	if c.apiKey == "" {
 		return nil, fmt.Errorf("OpenAI API key is required")
 	}
-	
+
 	// 构建请求URL
 	url := "https://api.openai.com/v1/chat/completions"
-	
+
 	// 构建请求体
 	openaiReq := map[string]interface{}{
 		"model": c.model,
@@ -164,25 +167,25 @@ func (c *Client) generateTextWithOpenAI(ctx context.Context, req *GenerateTextRe
 			{"role": "user", "content": req.Prompt},
 		},
 		"temperature": req.Temperature,
-		"max_tokens": req.MaxTokens,
+		"max_tokens":  req.MaxTokens,
 	}
-	
+
 	// 将请求体转换为JSON
 	reqBody, err := json.Marshal(openaiReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
-	
+
 	// 创建HTTP请求
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	// 设置请求头
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
-	
+
 	// 发送请求
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(httpReq)
@@ -190,18 +193,18 @@ func (c *Client) generateTextWithOpenAI(ctx context.Context, req *GenerateTextRe
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	// 读取响应
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
-	
+
 	// 检查响应状态码
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
-	
+
 	// 解析响应
 	var openaiResp struct {
 		Choices []struct {
@@ -210,16 +213,16 @@ func (c *Client) generateTextWithOpenAI(ctx context.Context, req *GenerateTextRe
 			} `json:"message"`
 		} `json:"choices"`
 	}
-	
+
 	if err := json.Unmarshal(respBody, &openaiResp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-	
+
 	// 提取生成的文本
 	if len(openaiResp.Choices) == 0 {
 		return nil, fmt.Errorf("no text generated")
 	}
-	
+
 	return &GenerateTextResponse{
 		Text: openaiResp.Choices[0].Message.Content,
 	}, nil
@@ -233,31 +236,31 @@ func (c *Client) generateTextWithOllama(ctx context.Context, req *GenerateTextRe
 		baseURL = "http://localhost:11434"
 	}
 	url := fmt.Sprintf("%s/api/generate", baseURL)
-	
+
 	// 构建请求体
 	ollamaReq := map[string]interface{}{
-		"model": c.model,
-		"prompt": req.Prompt,
+		"model":       c.model,
+		"prompt":      req.Prompt,
 		"temperature": req.Temperature,
 		"num_predict": req.MaxTokens,
-		"stream": false,
+		"stream":      false,
 	}
-	
+
 	// 将请求体转换为JSON
 	reqBody, err := json.Marshal(ollamaReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
-	
+
 	// 创建HTTP请求
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	// 设置请求头
 	httpReq.Header.Set("Content-Type", "application/json")
-	
+
 	// 发送请求
 	client := &http.Client{Timeout: 120 * time.Second} // Ollama可能需要更长的超时时间
 	resp, err := client.Do(httpReq)
@@ -265,27 +268,27 @@ func (c *Client) generateTextWithOllama(ctx context.Context, req *GenerateTextRe
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	// 读取响应
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
-	
+
 	// 检查响应状态码
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
-	
+
 	// 解析响应
 	var ollamaResp struct {
 		Response string `json:"response"`
 	}
-	
+
 	if err := json.Unmarshal(respBody, &ollamaResp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-	
+
 	return &GenerateTextResponse{
 		Text: ollamaResp.Response,
 	}, nil
@@ -294,82 +297,49 @@ func (c *Client) generateTextWithOllama(ctx context.Context, req *GenerateTextRe
 // generateTextWithArk 使用Ark生成文本
 func (c *Client) generateTextWithArk(ctx context.Context, req *GenerateTextRequest) (*GenerateTextResponse, error) {
 	// 基于Eino框架文档实现: https://www.cloudwego.io/zh/docs/eino/ecosystem_integration/chat_model/chat_model_ark/
-	
+
 	if c.apiKey == "" {
 		return nil, fmt.Errorf("Ark API key is required")
 	}
-	
-	// 构建请求URL
-	url := c.baseURL
-	if url == "" {
-		url = "https://api.ark.com/v1/chat/completions"
-	}
-	
-	// 构建请求体
-	arkReq := map[string]interface{}{
-		"model": c.model,
-		"messages": []map[string]string{
-			{"role": "user", "content": req.Prompt},
-		},
-		"temperature": req.Temperature,
-		"max_tokens": req.MaxTokens,
-	}
-	
-	// 将请求体转换为JSON
-	reqBody, err := json.Marshal(arkReq)
+
+	// 设置超时时间
+	timeout := 60 * time.Second
+
+	// 初始化Ark模型
+	model, err := ark.NewChatModel(ctx, &ark.ChatModelConfig{
+		// 服务配置
+		BaseURL: c.baseURL,
+		Region:  "cn-beijing", // 默认使用北京区域
+		Timeout: &timeout,
+
+		// 认证配置
+		APIKey: c.apiKey,
+
+		// 模型配置
+		Model: c.model,
+
+		// 生成参数
+		MaxTokens:   &req.MaxTokens,
+		Temperature: &req.Temperature,
+	})
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+		return nil, fmt.Errorf("failed to initialize Ark model: %w", err)
 	}
-	
-	// 创建HTTP请求
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(reqBody))
+
+	// 准备消息
+	messages := []*schema.Message{
+		schema.UserMessage(req.Prompt),
+	}
+
+	// 生成回复
+	response, err := model.Generate(ctx, messages)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to generate text: %w", err)
 	}
-	
-	// 设置请求头
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
-	
-	// 发送请求
-	client := &http.Client{Timeout: 60 * time.Second}
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-	defer resp.Body.Close()
-	
-	// 读取响应
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-	
-	// 检查响应状态码
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(respBody))
-	}
-	
-	// 解析响应
-	var arkResp struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
-	}
-	
-	if err := json.Unmarshal(respBody, &arkResp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-	
-	// 提取生成的文本
-	if len(arkResp.Choices) == 0 {
-		return nil, fmt.Errorf("no text generated")
-	}
-	
+
 	return &GenerateTextResponse{
-		Text: arkResp.Choices[0].Message.Content,
+		Text: response.Content,
 	}, nil
 }
 
@@ -384,12 +354,12 @@ func (c *Client) generateTextMock(ctx context.Context, req *GenerateTextRequest)
 		if err := json.Unmarshal([]byte(`{"destination":"东京"}`), &destMap); err == nil {
 			destination = destMap["destination"]
 		}
-		
+
 		if destination == "" {
 			destination = "东京" // 默认目的地
 		}
 	}
-	
+
 	// 生成示例旅行计划
 	planJSON := fmt.Sprintf(`{
 		"title": "%s旅行计划",
@@ -440,7 +410,7 @@ func (c *Client) generateTextMock(ctx context.Context, req *GenerateTextRequest)
 		},
 		"notes": "这是一个AI生成的%s旅行计划示例"
 	}`, destination, destination, destination, destination, destination, destination, destination, destination, destination)
-	
+
 	return &GenerateTextResponse{
 		Text: planJSON,
 	}, nil

@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"net/http"
-
-	"github.com/gin-gonic/gin"
 	"personatrip/internal/models"
 	"personatrip/internal/services"
+	"personatrip/internal/utils/httputil"
+
+	"github.com/gin-gonic/gin"
 )
 
 // AuthHandler 处理认证相关的请求
@@ -27,25 +27,25 @@ func NewAuthHandler(authService *services.AuthService) *AuthHandler {
 // @Accept json
 // @Produce json
 // @Param request body models.RegisterRequest true "注册信息"
-// @Success 201 {object} models.UserMySQL
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 201 {object} models.ApiResponse
+// @Failure 400 {object} models.ApiResponse
+// @Failure 500 {object} models.ApiResponse
 // @Router /api/auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req models.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		httputil.ReturnBadRequest(c, "无效的请求格式")
 		return
 	}
 
 	// 注册用户
 	user, err := h.authService.Register(c, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.ReturnInternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusCreated, user)
+	httputil.ReturnCreated(c, "用户注册成功", user)
 }
 
 // Login 用户登录
@@ -55,26 +55,26 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body models.LoginRequest true "登录信息"
-// @Success 200 {object} models.LoginResponse
-// @Failure 400 {object} map[string]string
-// @Failure 401 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 200 {object} models.ApiResponse
+// @Failure 400 {object} models.ApiResponse
+// @Failure 401 {object} models.ApiResponse
+// @Failure 500 {object} models.ApiResponse
 // @Router /api/auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req models.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		httputil.ReturnBadRequest(c, "无效的请求格式")
 		return
 	}
 
 	// 登录用户
 	response, err := h.authService.Login(c, &req)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		httputil.ReturnUnauthorized(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, response)
+	httputil.ReturnSuccessWithBean(c, "登录成功", response)
 }
 
 // GetProfile 获取用户资料
@@ -84,30 +84,30 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} models.UserMySQL
-// @Failure 401 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 200 {object} models.ApiResponse
+// @Failure 401 {object} models.ApiResponse
+// @Failure 500 {object} models.ApiResponse
 // @Router /api/auth/profile [get]
 func (h *AuthHandler) GetProfile(c *gin.Context) {
 	// 从上下文中获取用户ID
 	userID := c.GetString("user_id")
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		httputil.ReturnUnauthorized(c, "用户未认证")
 		return
 	}
 
 	// 获取用户资料
 	user, err := h.authService.GetUserFromToken(c, c.GetHeader("Authorization")[7:]) // 移除"Bearer "前缀
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.ReturnInternalError(c, err.Error())
 		return
 	}
 
 	// 确保获取的用户与令牌中的用户匹配
 	if userID != user.UserID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Unauthorized access to user profile"})
+		httputil.ReturnForbidden(c, "无权访问用户资料")
 		return
 	}
 
-	c.JSON(http.StatusOK, user)
+	httputil.ReturnSuccessWithBean(c, "获取用户资料成功", user)
 }
