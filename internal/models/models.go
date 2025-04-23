@@ -33,8 +33,8 @@ type TripPlan struct {
 	UserID      primitive.ObjectID `json:"user_id" bson:"user_id"`
 	Title       string             `json:"title" bson:"title"`
 	Destination string             `json:"destination" bson:"destination"`
-	StartDate   time.Time          `json:"start_date" bson:"start_date"`
-	EndDate     time.Time          `json:"end_date" bson:"end_date"`
+	StartDate   string             `json:"start_date" bson:"start_date"`
+	EndDate     string             `json:"end_date" bson:"end_date"`
 	Days        []TripDay          `json:"days" bson:"days"`
 	Budget      Budget             `json:"budget" bson:"budget"`
 	Notes       string             `json:"notes" bson:"notes"`
@@ -45,10 +45,10 @@ type TripPlan struct {
 
 // TripDay 旅行日程
 type TripDay struct {
-	Day         int           `json:"day" bson:"day"`
-	Date        time.Time     `json:"date" bson:"date"`
-	Activities  []Activity    `json:"activities" bson:"activities"`
-	Meals       []Meal        `json:"meals" bson:"meals"`
+	Day           int           `json:"day" bson:"day"`
+	Date          string        `json:"date" bson:"date"`
+	Activities    []Activity    `json:"activities" bson:"activities"`
+	Meals         []Meal        `json:"meals" bson:"meals"`
 	Accommodation Accommodation `json:"accommodation" bson:"accommodation"`
 }
 
@@ -106,14 +106,14 @@ type Budget struct {
 
 // PlanRequest 创建旅行计划的请求
 type PlanRequest struct {
-	Destination    string    `json:"destination" binding:"required"`
-	StartDate      time.Time `json:"start_date" binding:"required"`
-	EndDate        time.Time `json:"end_date" binding:"required"`
-	Budget         string    `json:"budget"`                    // 预算等级: 经济、中等、豪华
-	TravelStyle    []string  `json:"travel_style"`              // 旅行风格
-	Accommodation  []string  `json:"accommodation"`             // 住宿偏好
-	Transportation []string  `json:"transportation"`            // 交通偏好
-	Activities     []string  `json:"activities"`                // 活动偏好
-	FoodPreferences []string `json:"food_preferences"`          // 饮食偏好
-	SpecialRequests string   `json:"special_requests"`          // 特殊要求
+	Destination     string    `json:"destination" binding:"required"`
+	StartDate       time.Time `json:"start_date" binding:"required"`
+	EndDate         time.Time `json:"end_date" binding:"required"`
+	Budget          string    `json:"budget"`           // 预算等级: 经济、中等、豪华
+	TravelStyle     []string  `json:"travel_style"`     // 旅行风格
+	Accommodation   []string  `json:"accommodation"`    // 住宿偏好
+	Transportation  []string  `json:"transportation"`   // 交通偏好
+	Activities      []string  `json:"activities"`       // 活动偏好
+	FoodPreferences []string  `json:"food_preferences"` // 饮食偏好
+	SpecialRequests string    `json:"special_requests"` // 特殊要求
 }

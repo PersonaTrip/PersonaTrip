@@ -119,8 +119,8 @@ func (s *EinoService) GenerateTripPlan(ctx context.Context, req *models.PlanRequ
 
 	// 填充请求中的基本信息
 	plan.Destination = req.Destination
-	plan.StartDate = req.StartDate
-	plan.EndDate = req.EndDate
+	plan.StartDate = req.StartDate.String()
+	plan.EndDate = req.EndDate.String()
 
 	return plan, nil
 }
@@ -200,8 +200,8 @@ func buildTripPlanPrompt(req *models.PlanRequest) string {
 }
 `,
 		req.Destination,
-		req.StartDate.Format("2006-01-02"),
-		req.EndDate.Format("2006-01-02"),
+		req.StartDate,
+		req.EndDate,
 		req.Budget,
 		req.TravelStyle,
 		req.Accommodation,
