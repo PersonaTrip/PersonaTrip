@@ -54,14 +54,14 @@ type TripDay struct {
 
 // Activity 活动项目
 type Activity struct {
-	Name        string    `json:"name" bson:"name"`
-	Type        string    `json:"type" bson:"type"` // 景点、体验、交通等
-	Location    Location  `json:"location" bson:"location"`
-	StartTime   time.Time `json:"start_time" bson:"start_time"`
-	EndTime     time.Time `json:"end_time" bson:"end_time"`
-	Description string    `json:"description" bson:"description"`
-	Cost        float64   `json:"cost" bson:"cost"`
-	ImageURL    string    `json:"image_url" bson:"image_url"`
+	Name        string   `json:"name" bson:"name"`
+	Type        string   `json:"type" bson:"type"` // 景点、体验、交通等
+	Location    Location `json:"location" bson:"location"`
+	StartTime   string   `json:"start_time" bson:"start_time"`
+	EndTime     string   `json:"end_time" bson:"end_time"`
+	Description string   `json:"description" bson:"description"`
+	Cost        float64  `json:"cost" bson:"cost"`
+	ImageURL    string   `json:"image_url" bson:"image_url"`
 }
 
 // Meal 餐饮
