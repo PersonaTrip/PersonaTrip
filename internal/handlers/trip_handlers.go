@@ -2,12 +2,11 @@ package handlers
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"time"
 
 	"personatrip/internal/models"
 	"personatrip/internal/utils/httputil"
+	"personatrip/internal/utils/logger"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -61,7 +60,8 @@ func (h *TripHandler) GenerateTripPlan(c *gin.Context) {
 		httputil.ReturnBadRequest(c, "无效的请求格式")
 		return
 	}
-	fmt.Println(req)
+	logger.Infof("收到旅行计划请求: %+v", req)
+
 	// 验证日期
 	if req.StartDate.After(req.EndDate) {
 		httputil.ReturnBadRequest(c, "开始日期不能晚于结束日期")
@@ -71,7 +71,7 @@ func (h *TripHandler) GenerateTripPlan(c *gin.Context) {
 	// 调用Eino服务生成旅行计划
 	plan, err := h.einoService.GenerateTripPlan(c.Request.Context(), &req)
 	if err != nil {
-		log.Println(err)
+		logger.Errorf("生成旅行计划失败: %v", err)
 		httputil.ReturnInternalError(c, "生成旅行计划失败")
 		return
 	}
@@ -99,10 +99,12 @@ func (h *TripHandler) GenerateTripPlan(c *gin.Context) {
 	// 保存到数据库
 	savedPlan, err := h.repository.CreateTripPlan(c, plan)
 	if err != nil {
+		logger.Errorf("保存旅行计划失败: %v", err)
 		httputil.ReturnInternalError(c, "保存旅行计划失败")
 		return
 	}
 
+	logger.Infof("成功生成旅行计划, ID: %s", savedPlan.ID.Hex())
 	httputil.ReturnSuccessWithBean(c, "旅行计划生成成功", savedPlan)
 }
 

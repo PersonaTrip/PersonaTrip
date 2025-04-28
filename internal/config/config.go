@@ -6,6 +6,12 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// LogConfig 日志配置
+type LogConfig struct {
+	Level string // 日志级别: debug, info, warn, error
+	Path  string // 日志文件路径，如果为空则只输出到控制台
+}
+
 // Config 应用配置
 type Config struct {
 	Environment        string
@@ -14,10 +20,11 @@ type Config struct {
 	MongoURI           string
 	MySQLDSN           string
 	JWTSecret          string
-	CreateSuperAdmin   bool   // 是否创建超级管理员
-	SuperAdminUsername string // 超级管理员用户名
-	SuperAdminPassword string // 超级管理员密码
-	SuperAdminEmail    string // 超级管理员邮箱
+	CreateSuperAdmin   bool       // 是否创建超级管理员
+	SuperAdminUsername string     // 超级管理员用户名
+	SuperAdminPassword string     // 超级管理员密码
+	SuperAdminEmail    string     // 超级管理员邮箱
+	LogConfig          *LogConfig // 日志配置
 }
 
 // Load 从环境变量加载配置
@@ -39,6 +46,10 @@ func Load() (*Config, error) {
 		SuperAdminUsername: getEnv("SUPER_ADMIN_USERNAME", "admin"),
 		SuperAdminPassword: getEnv("SUPER_ADMIN_PASSWORD", "admin123"),
 		SuperAdminEmail:    getEnv("SUPER_ADMIN_EMAIL", "admin@personatrip.com"),
+		LogConfig: &LogConfig{
+			Level: getEnv("LOG_LEVEL", "info"),
+			Path:  getEnv("LOG_PATH", ""),
+		},
 	}
 
 	// 如果设置了SERVER_ADDRESS环境变量，则覆盖默认值

@@ -1,13 +1,12 @@
 package main
 
 import (
-	"log"
-
 	"personatrip/cmd"
+	"personatrip/internal/utils/logger"
 )
 
 func main() {
 	if err := cmd.Execute(); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		logger.Fatalf("Failed to start server: %v", err)
 	}
 }

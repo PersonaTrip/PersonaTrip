@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,6 +11,7 @@ import (
 	"personatrip/internal/app"
 	"personatrip/internal/config"
 	"personatrip/internal/middleware"
+	"personatrip/internal/utils/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,6 +22,16 @@ func Execute() error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
+	}
+
+	// 初始化日志
+	logPath := ""
+	if cfg.LogConfig != nil {
+		logger.SetLogLevel(cfg.LogConfig.Level)
+		logPath = cfg.LogConfig.Path
+	}
+	if logPath != "" {
+		logger.SetLogOutput(logPath)
 	}
 
 	// 设置Gin模式
@@ -43,9 +53,9 @@ func Execute() error {
 
 	// 在goroutine中启动服务器
 	go func() {
-		log.Printf("Server starting on %s", cfg.ServerAddress)
+		logger.Infof("Server starting on %s", cfg.ServerAddress)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed to start server: %v", err)
+			logger.Fatalf("Failed to start server: %v", err)
 		}
 	}()
 
@@ -53,7 +63,7 @@ func Execute() error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutting down server...")
+	logger.Info("Shutting down server...")
 
 	// 设置关闭超时
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -61,9 +71,9 @@ func Execute() error {
 
 	// 关闭服务器
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		logger.Fatalf("Server forced to shutdown: %v", err)
 	}
 
-	log.Println("Server exiting")
+	logger.Info("Server exiting")
 	return nil
 }

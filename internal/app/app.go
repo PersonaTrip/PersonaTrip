@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"log"
 
 	"personatrip/internal/api"
 	"personatrip/internal/config"
@@ -11,6 +10,7 @@ import (
 	"personatrip/internal/models"
 	"personatrip/internal/repository"
 	"personatrip/internal/services"
+	"personatrip/internal/utils/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -53,7 +53,7 @@ func New() *Application {
 	// 加载配置
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		logger.Fatalf("Failed to load config: %v", err)
 	}
 
 	// 创建应用实例
@@ -84,7 +84,7 @@ func (a *Application) initRepositories() {
 	// 初始化MySQL存储层
 	mysqlDB, err := repository.NewMySQL(a.Cfg.MySQLDSN)
 	if err != nil {
-		log.Printf("Failed to connect to MySQL: %v", err)
+		logger.Warnf("Failed to connect to MySQL: %v", err)
 		// 如果无法连接MySQL，我们将无法提供用户认证和管理员功能
 		// 在实际生产环境中，这里应该处理得更优雅
 	}
@@ -99,7 +99,7 @@ func (a *Application) initRepositories() {
 	mongoDB, err := repository.NewMongoDB(a.Cfg.MongoURI)
 	if err != nil {
 		// 如果MongoDB连接失败，使用内存存储
-		log.Printf("Failed to connect to MongoDB: %v, using in-memory storage instead", err)
+		logger.Warnf("Failed to connect to MongoDB: %v, using in-memory storage instead", err)
 		a.Repositories.TripRepo = repository.NewMemoryStore()
 	} else {
 		a.Repositories.TripRepo = mongoDB
@@ -148,7 +148,7 @@ func (a *Application) setupRoutes() {
 // createSuperAdminIfNeeded 如果配置了，创建超级管理员
 func (a *Application) createSuperAdminIfNeeded() {
 	if a.Cfg.CreateSuperAdmin {
-		log.Println("Creating super admin if not exists...")
+		logger.Info("Creating super admin if not exists...")
 		// 检查超级管理员是否存在
 		_, err := a.Services.AdminService.GetAdminByUsername(context.Background(), a.Cfg.SuperAdminUsername)
 		if err != nil {
@@ -160,9 +160,9 @@ func (a *Application) createSuperAdminIfNeeded() {
 				Role:     "super_admin",
 			})
 			if err != nil {
-				log.Printf("Failed to create super admin: %v", err)
+				logger.Errorf("Failed to create super admin: %v", err)
 			} else {
-				log.Println("Super admin created successfully")
+				logger.Info("Super admin created successfully")
 			}
 		}
 	}
@@ -170,18 +170,18 @@ func (a *Application) createSuperAdminIfNeeded() {
 
 // createDefaultModelConfigIfNeeded 如果不存在，创建默认的大模型配置
 func (a *Application) createDefaultModelConfigIfNeeded() {
-	log.Println("正在检查默认大模型配置...")
+	logger.Info("正在检查默认大模型配置...")
 
 	// 尝试获取配置列表
 	configs, err := a.Services.ModelConfigService.GetAllModelConfigs(context.Background())
 	if err != nil {
-		log.Printf("获取模型配置失败: %v", err)
+		logger.Errorf("获取模型配置失败: %v", err)
 		return
 	}
 
 	// 如果没有任何配置，创建默认配置
 	if len(configs) == 0 {
-		log.Println("创建默认大模型配置...")
+		logger.Info("创建默认大模型配置...")
 		// 创建默认的ARK大模型配置
 		defaultConfig := &models.ModelConfigCreateRequest{
 			Name:        "默认ARK配置",
@@ -196,12 +196,12 @@ func (a *Application) createDefaultModelConfigIfNeeded() {
 
 		config, err := a.Services.ModelConfigService.CreateModelConfig(context.Background(), defaultConfig)
 		if err != nil {
-			log.Printf("创建默认大模型配置失败: %v", err)
+			logger.Errorf("创建默认大模型配置失败: %v", err)
 		} else {
-			log.Printf("默认大模型配置创建成功，ID: %d", config.ID)
+			logger.Infof("默认大模型配置创建成功，ID: %d", config.ID)
 		}
 	} else {
-		log.Println("已存在大模型配置，跳过创建默认配置")
+		logger.Info("已存在大模型配置，跳过创建默认配置")
 	}
 }
 
