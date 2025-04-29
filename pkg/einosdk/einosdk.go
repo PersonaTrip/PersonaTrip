@@ -113,6 +113,11 @@ func getDefaultBaseURL(modelType ModelType) string {
 	}
 }
 
+// getDefaultMaxToken 获取默认的上下文长度
+func getDefaultMaxToken() int {
+	return 8000
+}
+
 // GenerateTextRequest 是生成文本的请求参数
 type GenerateTextRequest struct {
 	Model       string  `json:"model"`

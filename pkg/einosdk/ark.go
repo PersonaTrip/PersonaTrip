@@ -18,15 +18,14 @@ func (c *Client) generateTextWithArk(ctx context.Context, req *GenerateTextReque
 	if apiKey == "" {
 		return nil, fmt.Errorf("ARK API密钥是必需的")
 	}
-
 	logger.Info("正在准备调用ARK模型:", c.model)
-
 	// 初始化模型
 	logger.Debugf("ARK配置: APIKey=%s, Model=%s, BaseURL=%s", apiKey, c.model, c.baseURL)
 	model, err := ark.NewChatModel(ctx, &ark.ChatModelConfig{
-		APIKey:  apiKey,
-		Model:   c.model,
-		BaseURL: c.baseURL,
+		APIKey:    apiKey,
+		Model:     c.model,
+		BaseURL:   c.baseURL,
+		MaxTokens: &req.MaxTokens,
 	})
 	if err != nil {
 		logger.Errorf("初始化ARK模型失败: %v", err)
@@ -63,11 +62,10 @@ func (c *Client) generateTextWithArk(ctx context.Context, req *GenerateTextReque
 			}
 			break
 		}
-
+		fmt.Print(chunk.Content)
 		// 累积响应内容
 		if chunk.Content != "" {
 			fullResponse.WriteString(chunk.Content)
-			logger.Debug(chunk.Content)
 		}
 	}
 
