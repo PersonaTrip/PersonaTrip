@@ -2,6 +2,7 @@ package api
 
 import (
 	"personatrip/internal/handlers"
+	"personatrip/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -18,6 +19,7 @@ func SetupRoutes(
 	authMiddleware gin.HandlerFunc,
 	jwtSecret string,
 ) {
+	router.Use(middleware.CORS())
 	// API路由组
 	api := router.Group("/api")
 	{

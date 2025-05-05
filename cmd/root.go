@@ -10,7 +10,6 @@ import (
 
 	"personatrip/internal/app"
 	"personatrip/internal/config"
-	"personatrip/internal/middleware"
 	"personatrip/internal/utils/logger"
 
 	"github.com/gin-gonic/gin"
@@ -41,9 +40,6 @@ func Execute() error {
 
 	// 初始化应用程序
 	application := app.New()
-
-	// 添加CORS中间件，允许所有跨域请求
-	application.Router.Use(middleware.CORS())
 
 	// 创建HTTP服务器
 	srv := &http.Server{
