@@ -20,12 +20,12 @@ type ModelConfigService interface {
 
 // ModelConfigServiceImpl 是模型配置服务的实现
 type ModelConfigServiceImpl struct {
-	repo repository.ModelConfigRepository
+	db repository.Database
 }
 
 // NewModelConfigService 创建新的模型配置服务
-func NewModelConfigService(repo repository.ModelConfigRepository) ModelConfigService {
-	return &ModelConfigServiceImpl{repo: repo}
+func NewModelConfigService(db repository.Database) ModelConfigService {
+	return &ModelConfigServiceImpl{db: db}
 }
 
 // CreateModelConfig 创建新的模型配置
@@ -49,7 +49,7 @@ func (s *ModelConfigServiceImpl) CreateModelConfig(ctx context.Context, req *mod
 		config.MaxTokens = 2000
 	}
 
-	if err := s.repo.Create(ctx, config); err != nil {
+	if err := s.db.ModelConfigRepo().Create(ctx, config); err != nil {
 		return nil, err
 	}
 	return config, nil
@@ -57,7 +57,7 @@ func (s *ModelConfigServiceImpl) CreateModelConfig(ctx context.Context, req *mod
 
 // UpdateModelConfig 更新模型配置
 func (s *ModelConfigServiceImpl) UpdateModelConfig(ctx context.Context, id uint, req *models.ModelConfigUpdateRequest) (*models.ModelConfig, error) {
-	config, err := s.repo.GetByID(ctx, id)
+	config, err := s.db.ModelConfigRepo().GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (s *ModelConfigServiceImpl) UpdateModelConfig(ctx context.Context, id uint,
 		config.MaxTokens = req.MaxTokens
 	}
 
-	if err := s.repo.Update(ctx, config); err != nil {
+	if err := s.db.ModelConfigRepo().Update(ctx, config); err != nil {
 		return nil, err
 	}
 	return config, nil
@@ -94,25 +94,25 @@ func (s *ModelConfigServiceImpl) UpdateModelConfig(ctx context.Context, id uint,
 
 // DeleteModelConfig 删除模型配置
 func (s *ModelConfigServiceImpl) DeleteModelConfig(ctx context.Context, id uint) error {
-	return s.repo.Delete(ctx, id)
+	return s.db.ModelConfigRepo().Delete(ctx, id)
 }
 
 // GetModelConfigByID 根据ID获取模型配置
 func (s *ModelConfigServiceImpl) GetModelConfigByID(ctx context.Context, id uint) (*models.ModelConfig, error) {
-	return s.repo.GetByID(ctx, id)
+	return s.db.ModelConfigRepo().GetByID(ctx, id)
 }
 
 // GetAllModelConfigs 获取所有模型配置
 func (s *ModelConfigServiceImpl) GetAllModelConfigs(ctx context.Context) ([]models.ModelConfig, error) {
-	return s.repo.GetAll(ctx)
+	return s.db.ModelConfigRepo().GetAll(ctx)
 }
 
 // GetActiveModelConfig 获取当前活跃的模型配置
 func (s *ModelConfigServiceImpl) GetActiveModelConfig(ctx context.Context) (*models.ModelConfig, error) {
-	return s.repo.GetActive(ctx)
+	return s.db.ModelConfigRepo().GetActive(ctx)
 }
 
 // SetActiveModelConfig 设置指定ID的配置为活跃
 func (s *ModelConfigServiceImpl) SetActiveModelConfig(ctx context.Context, id uint) error {
-	return s.repo.SetActive(ctx, id)
+	return s.db.ModelConfigRepo().SetActive(ctx, id)
 }

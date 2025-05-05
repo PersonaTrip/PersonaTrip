@@ -19,6 +19,7 @@ import (
 type Application struct {
 	Router       *gin.Engine
 	Cfg          *config.Config
+	DB           repository.Database
 	Repositories *Repositories
 	Services     *Services
 	Handlers     *Handlers
@@ -26,10 +27,7 @@ type Application struct {
 
 // Repositories 包含所有仓库实例
 type Repositories struct {
-	MySQL           *repository.MySQL
-	AdminRepo       repository.AdminRepository
-	ModelConfigRepo repository.ModelConfigRepository
-	TripRepo        handlers.TripRepository
+	TripRepo handlers.TripRepository
 }
 
 // Services 包含所有服务实例
@@ -62,7 +60,8 @@ func New() *Application {
 		Cfg:    cfg,
 	}
 
-	// 初始化仓库、服务和处理程序
+	// 初始化数据库、仓库、服务和处理程序
+	app.initDatabase()
 	app.initRepositories()
 	app.initServices()
 	app.initHandlers()
@@ -77,10 +76,8 @@ func New() *Application {
 	return app
 }
 
-// initRepositories 初始化所有仓库
-func (a *Application) initRepositories() {
-	a.Repositories = &Repositories{}
-
+// initDatabase 初始化数据库
+func (a *Application) initDatabase() {
 	// 初始化MySQL存储层
 	mysqlDB, err := repository.NewMySQL(a.Cfg.MySQLDSN)
 	if err != nil {
@@ -88,12 +85,14 @@ func (a *Application) initRepositories() {
 		// 如果无法连接MySQL，我们将无法提供用户认证和管理员功能
 		// 在实际生产环境中，这里应该处理得更优雅
 	}
-	a.Repositories.MySQL = mysqlDB
 
-	// 初始化仓库
-	// 使用GORM数据库存储管理员和模型配置
-	a.Repositories.AdminRepo = repository.NewGormAdminRepository(mysqlDB.DB)
-	a.Repositories.ModelConfigRepo = repository.NewGormModelConfigRepository(mysqlDB.DB)
+	// 创建数据库抽象层
+	a.DB = repository.NewGormDatabase(mysqlDB.DB)
+}
+
+// initRepositories 初始化所有仓库
+func (a *Application) initRepositories() {
+	a.Repositories = &Repositories{}
 
 	// 初始化MongoDB存储层或内存存储
 	mongoDB, err := repository.NewMongoDB(a.Cfg.MongoURI)
@@ -109,9 +108,9 @@ func (a *Application) initRepositories() {
 // initServices 初始化所有服务
 func (a *Application) initServices() {
 	a.Services = &Services{
-		AuthService:        services.NewAuthService(a.Repositories.MySQL, a.Cfg.JWTSecret),
-		AdminService:       services.NewAdminService(a.Repositories.AdminRepo, a.Cfg.JWTSecret),
-		ModelConfigService: services.NewModelConfigService(a.Repositories.ModelConfigRepo),
+		AuthService:        services.NewAuthService(a.DB, a.Cfg.JWTSecret),
+		AdminService:       services.NewAdminService(a.DB, a.Cfg.JWTSecret),
+		ModelConfigService: services.NewModelConfigService(a.DB),
 	}
 
 	// 初始化Eino服务

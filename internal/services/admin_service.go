@@ -23,14 +23,14 @@ type AdminService interface {
 
 // AdminServiceImpl 是管理员服务的实现
 type AdminServiceImpl struct {
-	repo      repository.AdminRepository
+	db        repository.Database
 	jwtSecret string
 }
 
 // NewAdminService 创建新的管理员服务
-func NewAdminService(repo repository.AdminRepository, jwtSecret string) AdminService {
+func NewAdminService(db repository.Database, jwtSecret string) AdminService {
 	return &AdminServiceImpl{
-		repo:      repo,
+		db:        db,
 		jwtSecret: jwtSecret,
 	}
 }
@@ -38,7 +38,7 @@ func NewAdminService(repo repository.AdminRepository, jwtSecret string) AdminSer
 // CreateAdmin 创建新的管理员
 func (s *AdminServiceImpl) CreateAdmin(ctx context.Context, req *models.AdminCreateRequest) (*models.Admin, error) {
 	// 检查用户名是否已存在
-	_, err := s.repo.GetByUsername(ctx, req.Username)
+	_, err := s.db.AdminRepo().GetByUsername(ctx, req.Username)
 	if err == nil {
 		return nil, errors.New("username already exists")
 	}
@@ -59,7 +59,7 @@ func (s *AdminServiceImpl) CreateAdmin(ctx context.Context, req *models.AdminCre
 		return nil, err
 	}
 
-	if err := s.repo.Create(ctx, admin); err != nil {
+	if err := s.db.AdminRepo().Create(ctx, admin); err != nil {
 		return nil, err
 	}
 	return admin, nil
@@ -67,7 +67,7 @@ func (s *AdminServiceImpl) CreateAdmin(ctx context.Context, req *models.AdminCre
 
 // UpdateAdmin 更新管理员信息
 func (s *AdminServiceImpl) UpdateAdmin(ctx context.Context, id uint, req *models.AdminUpdateRequest) (*models.Admin, error) {
-	admin, err := s.repo.GetByID(ctx, id)
+	admin, err := s.db.AdminRepo().GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (s *AdminServiceImpl) UpdateAdmin(ctx context.Context, id uint, req *models
 		}
 	}
 
-	if err := s.repo.Update(ctx, admin); err != nil {
+	if err := s.db.AdminRepo().Update(ctx, admin); err != nil {
 		return nil, err
 	}
 	return admin, nil
@@ -93,27 +93,27 @@ func (s *AdminServiceImpl) UpdateAdmin(ctx context.Context, id uint, req *models
 
 // DeleteAdmin 删除管理员
 func (s *AdminServiceImpl) DeleteAdmin(ctx context.Context, id uint) error {
-	return s.repo.Delete(ctx, id)
+	return s.db.AdminRepo().Delete(ctx, id)
 }
 
 // GetAdminByID 根据ID获取管理员
 func (s *AdminServiceImpl) GetAdminByID(ctx context.Context, id uint) (*models.Admin, error) {
-	return s.repo.GetByID(ctx, id)
+	return s.db.AdminRepo().GetByID(ctx, id)
 }
 
 // GetAdminByUsername 根据用户名获取管理员
 func (s *AdminServiceImpl) GetAdminByUsername(ctx context.Context, username string) (*models.Admin, error) {
-	return s.repo.GetByUsername(ctx, username)
+	return s.db.AdminRepo().GetByUsername(ctx, username)
 }
 
 // GetAllAdmins 获取所有管理员
 func (s *AdminServiceImpl) GetAllAdmins(ctx context.Context) ([]models.Admin, error) {
-	return s.repo.GetAll(ctx)
+	return s.db.AdminRepo().GetAll(ctx)
 }
 
 // Login 管理员登录
 func (s *AdminServiceImpl) Login(ctx context.Context, req *models.AdminLoginRequest) (string, error) {
-	admin, err := s.repo.GetByUsername(ctx, req.Username)
+	admin, err := s.db.AdminRepo().GetByUsername(ctx, req.Username)
 	if err != nil {
 		return "", errors.New("invalid username or password")
 	}

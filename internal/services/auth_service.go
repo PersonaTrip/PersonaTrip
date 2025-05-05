@@ -8,27 +8,20 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"personatrip/internal/models"
+	"personatrip/internal/repository"
 )
 
 // AuthService 处理用户认证
 type AuthService struct {
-	userRepo   UserRepository
+	db         repository.Database
 	jwtSecret  string
 	expiration time.Duration
 }
 
-// UserRepository 用户存储接口
-type UserRepository interface {
-	CreateUser(ctx *gin.Context, user *models.UserMySQL) (*models.UserMySQL, error)
-	GetUserByID(ctx *gin.Context, userID string) (*models.UserMySQL, error)
-	GetUserByUsername(ctx *gin.Context, username string) (*models.UserMySQL, error)
-	CheckUserCredentials(ctx *gin.Context, username, password string) (*models.UserMySQL, error)
-}
-
 // NewAuthService 创建新的认证服务
-func NewAuthService(userRepo UserRepository, jwtSecret string) *AuthService {
+func NewAuthService(db repository.Database, jwtSecret string) *AuthService {
 	return &AuthService{
-		userRepo:   userRepo,
+		db:         db,
 		jwtSecret:  jwtSecret,
 		expiration: 24 * time.Hour, // 令牌有效期24小时
 	}
@@ -46,13 +39,13 @@ func (s *AuthService) Register(ctx *gin.Context, req *models.RegisterRequest) (*
 		UserID:   userID,
 	}
 
-	return s.userRepo.CreateUser(ctx, user)
+	return s.db.UserRepo().CreateUser(ctx, user)
 }
 
 // Login 用户登录
 func (s *AuthService) Login(ctx *gin.Context, req *models.LoginRequest) (*models.LoginResponse, error) {
 	// 验证用户凭据
-	user, err := s.userRepo.CheckUserCredentials(ctx, req.Username, req.Password)
+	user, err := s.db.UserRepo().CheckUserCredentials(ctx, req.Username, req.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -129,5 +122,5 @@ func (s *AuthService) GetUserFromToken(ctx *gin.Context, tokenString string) (*m
 		return nil, err
 	}
 	// 获取用户
-	return s.userRepo.GetUserByID(ctx, userID)
+	return s.db.UserRepo().GetUserByID(ctx, userID)
 }
