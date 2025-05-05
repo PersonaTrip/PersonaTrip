@@ -12,6 +12,11 @@ type LogConfig struct {
 	Path  string // 日志文件路径，如果为空则只输出到控制台
 }
 
+// MCPConfig MCP相关配置
+type MCPConfig struct {
+	AMapAPIKey string // 高德地图API密钥
+}
+
 // Config 应用配置
 type Config struct {
 	Environment        string
@@ -25,6 +30,7 @@ type Config struct {
 	SuperAdminPassword string     // 超级管理员密码
 	SuperAdminEmail    string     // 超级管理员邮箱
 	LogConfig          *LogConfig // 日志配置
+	MCPConfig          *MCPConfig // MCP相关配置
 }
 
 // Load 从环境变量加载配置
@@ -49,6 +55,9 @@ func Load() (*Config, error) {
 		LogConfig: &LogConfig{
 			Level: getEnv("LOG_LEVEL", "info"),
 			Path:  getEnv("LOG_PATH", ""),
+		},
+		MCPConfig: &MCPConfig{
+			AMapAPIKey: getEnv("AMAP_API_KEY", "66297b6685c934c7e48df4f6891091f3"),
 		},
 	}
 

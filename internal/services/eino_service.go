@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/mark3labs/mcp-go/mcp"
+	iconfig "personatrip/internal/config"
 	"personatrip/internal/models"
 	"personatrip/pkg/einosdk"
+	pkgmcp "personatrip/pkg/mcp"
 )
 
 // EinoService 是大模型服务的实现
@@ -16,6 +19,7 @@ type EinoService struct {
 	configService  ModelConfigService
 	activeConfig   *models.ModelConfig
 	defaultOptions *einosdk.GenerateTextRequest
+	mcpClient      *pkgmcp.Client
 }
 
 // NewEinoService 创建新的Eino服务实例
@@ -30,6 +34,31 @@ func NewEinoService(configService ModelConfigService) *EinoService {
 
 	// 初始化时尝试加载激活的模型配置
 	service.RefreshModelConfig(context.Background())
+
+	// 初始化MCP客户端
+	go func() {
+		// 加载配置
+		cfg, err := iconfig.Load()
+		if err != nil {
+			fmt.Printf("加载配置失败: %v，使用默认值初始化MCP客户端\n", err)
+			client, err := pkgmcp.InitMCPClient(context.Background(), nil)
+			if err != nil {
+				fmt.Printf("初始化MCP客户端失败: %v\n", err)
+				return
+			}
+			service.mcpClient = client
+			return
+		}
+
+		// 使用配置初始化MCP客户端
+		opts := pkgmcp.NewInitOptionsFromConfig(cfg)
+		client, err := pkgmcp.InitMCPClient(context.Background(), opts)
+		if err != nil {
+			fmt.Printf("初始化MCP客户端失败: %v\n", err)
+			return
+		}
+		service.mcpClient = client
+	}()
 
 	return service
 }
@@ -49,6 +78,32 @@ func NewEinoServiceWithConfig(config *models.ModelConfig) *EinoService {
 		config.ToEinoModelType(),
 		config.GetEinoOptions()...,
 	)
+
+	// 初始化MCP客户端
+	go func() {
+		// 加载配置
+
+		cfg, err := iconfig.Load()
+		if err != nil {
+			fmt.Printf("加载配置失败: %v，使用默认值初始化MCP客户端\n", err)
+			client, err := pkgmcp.InitMCPClient(context.Background(), nil)
+			if err != nil {
+				fmt.Printf("初始化MCP客户端失败: %v\n", err)
+				return
+			}
+			service.mcpClient = client
+			return
+		}
+
+		// 使用配置初始化MCP客户端
+		opts := pkgmcp.NewInitOptionsFromConfig(cfg)
+		client, err := pkgmcp.InitMCPClient(context.Background(), opts)
+		if err != nil {
+			fmt.Printf("初始化MCP客户端失败: %v\n", err)
+			return
+		}
+		service.mcpClient = client
+	}()
 
 	return service
 }
@@ -572,4 +627,47 @@ func (s *EinoService) GenerateDestinationRecommendations(ctx context.Context, pr
 	}
 
 	return recommendations, nil
+}
+
+// GetMCPTools 获取指定提供者的所有工具
+func (s *EinoService) GetMCPTools(ctx context.Context, providerName string) ([]mcp.Tool, error) {
+	if s.mcpClient == nil {
+		return nil, fmt.Errorf("MCP客户端未初始化")
+	}
+	return s.mcpClient.GetTools(ctx, providerName)
+}
+
+// GetAllMCPTools 获取所有提供者的所有工具
+func (s *EinoService) GetAllMCPTools(ctx context.Context) (map[string][]mcp.Tool, error) {
+	if s.mcpClient == nil {
+		return nil, fmt.Errorf("MCP客户端未初始化")
+	}
+	return s.mcpClient.GetAllTools(ctx)
+}
+
+// CallMCPTool 调用指定提供者的指定工具
+func (s *EinoService) CallMCPTool(ctx context.Context, providerName, toolName string, arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+	if s.mcpClient == nil {
+		return nil, fmt.Errorf("MCP客户端未初始化")
+	}
+	return s.mcpClient.CallTool(ctx, providerName, toolName, arguments)
+}
+
+// Close 关闭服务实例并释放资源
+func (s *EinoService) Close() error {
+	var errs []error
+
+	// 关闭MCP客户端
+	if s.mcpClient != nil {
+		if err := s.mcpClient.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("关闭MCP客户端错误: %w", err))
+		}
+	}
+
+	// 这里可以添加其他资源的关闭逻辑
+
+	if len(errs) > 0 {
+		return fmt.Errorf("关闭服务时发生错误: %v", errs)
+	}
+	return nil
 }

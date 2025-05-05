@@ -1,4 +1,4 @@
-// Package mcp defines the core types and interfaces for the Model Control Protocol (MCP).
+// Package mcp defines the core types and interfaces for the Model Context Protocol (MCP).
 // MCP is a protocol for communication between LLM-powered applications and their supporting services.
 package mcp
 
@@ -11,53 +11,53 @@ import (
 type MCPMethod string
 
 const (
-	// Initiates connection and negotiates protocol capabilities.
+	// MethodInitialize initiates connection and negotiates protocol capabilities.
 	// https://modelcontextprotocol.io/specification/2024-11-05/basic/lifecycle/#initialization
 	MethodInitialize MCPMethod = "initialize"
 
-	// Verifies connection liveness between client and server.
+	// MethodPing verifies connection liveness between client and server.
 	// https://modelcontextprotocol.io/specification/2024-11-05/basic/utilities/ping/
 	MethodPing MCPMethod = "ping"
 
-	// Lists all available server resources.
+	// MethodResourcesList lists all available server resources.
 	// https://modelcontextprotocol.io/specification/2024-11-05/server/resources/
 	MethodResourcesList MCPMethod = "resources/list"
 
-	// Provides URI templates for constructing resource URIs.
+	// MethodResourcesTemplatesList provides URI templates for constructing resource URIs.
 	// https://modelcontextprotocol.io/specification/2024-11-05/server/resources/
 	MethodResourcesTemplatesList MCPMethod = "resources/templates/list"
 
-	// Retrieves content of a specific resource by URI.
+	// MethodResourcesRead retrieves content of a specific resource by URI.
 	// https://modelcontextprotocol.io/specification/2024-11-05/server/resources/
 	MethodResourcesRead MCPMethod = "resources/read"
 
-	// Lists all available prompt templates.
+	// MethodPromptsList lists all available prompt templates.
 	// https://modelcontextprotocol.io/specification/2024-11-05/server/prompts/
 	MethodPromptsList MCPMethod = "prompts/list"
 
-	// Retrieves a specific prompt template with filled parameters.
+	// MethodPromptsGet retrieves a specific prompt template with filled parameters.
 	// https://modelcontextprotocol.io/specification/2024-11-05/server/prompts/
 	MethodPromptsGet MCPMethod = "prompts/get"
 
-	// Lists all available executable tools.
+	// MethodToolsList lists all available executable tools.
 	// https://modelcontextprotocol.io/specification/2024-11-05/server/tools/
 	MethodToolsList MCPMethod = "tools/list"
 
-	// Invokes a specific tool with provided parameters.
+	// MethodToolsCall invokes a specific tool with provided parameters.
 	// https://modelcontextprotocol.io/specification/2024-11-05/server/tools/
 	MethodToolsCall MCPMethod = "tools/call"
 
-	// Notifies when the list of available resources changes.
+	// MethodNotificationResourcesListChanged notifies when the list of available resources changes.
 	// https://modelcontextprotocol.io/specification/2025-03-26/server/resources#list-changed-notification
 	MethodNotificationResourcesListChanged = "notifications/resources/list_changed"
 
 	MethodNotificationResourceUpdated = "notifications/resources/updated"
 
-	// Notifies when the list of available prompt templates changes.
+	// MethodNotificationPromptsListChanged notifies when the list of available prompt templates changes.
 	// https://modelcontextprotocol.io/specification/2025-03-26/server/prompts#list-changed-notification
 	MethodNotificationPromptsListChanged = "notifications/prompts/list_changed"
 
-	// Notifies when the list of available tools changes.
+	// MethodNotificationToolsListChanged notifies when the list of available tools changes.
 	// https://spec.modelcontextprotocol.io/specification/2024-11-05/server/tools/list_changed/
 	MethodNotificationToolsListChanged = "notifications/tools/list_changed"
 )
@@ -132,7 +132,7 @@ type NotificationParams struct {
 }
 
 // MarshalJSON implements custom JSON marshaling
-func (p NotificationParams) MarshalJSON() ([]byte, error) {
+func (p *NotificationParams) MarshalJSON() ([]byte, error) {
 	// Create a map to hold all fields
 	m := make(map[string]interface{})
 
@@ -659,24 +659,26 @@ type SamplingMessage struct {
 	Content interface{} `json:"content"` // Can be TextContent or ImageContent
 }
 
+type Annotations struct {
+	// Describes who the intended customer of this object or data is.
+	//
+	// It can include multiple entries to indicate content useful for multiple
+	// audiences (e.g., `["user", "assistant"]`).
+	Audience []Role `json:"audience,omitempty"`
+
+	// Describes how important this data is for operating the server.
+	//
+	// A value of 1 means "most important," and indicates that the data is
+	// effectively required, while 0 means "least important," and indicates that
+	// the data is entirely optional.
+	Priority float64 `json:"priority,omitempty"`
+}
+
 // Annotated is the base for objects that include optional annotations for the
 // client. The client can use annotations to inform how objects are used or
 // displayed
 type Annotated struct {
-	Annotations *struct {
-		// Describes who the intended customer of this object or data is.
-		//
-		// It can include multiple entries to indicate content useful for multiple
-		// audiences (e.g., `["user", "assistant"]`).
-		Audience []Role `json:"audience,omitempty"`
-
-		// Describes how important this data is for operating the server.
-		//
-		// A value of 1 means "most important," and indicates that the data is
-		// effectively required, while 0 means "least important," and indicates that
-		// the data is entirely optional.
-		Priority float64 `json:"priority,omitempty"`
-	} `json:"annotations,omitempty"`
+	Annotations *Annotations `json:"annotations,omitempty"`
 }
 
 type Content interface {
@@ -861,7 +863,6 @@ type RootsListChangedNotification struct {
 	Notification
 }
 
-/* Client messages */
 // ClientRequest represents any request that can be sent from client to server.
 type ClientRequest interface{}
 
@@ -871,7 +872,6 @@ type ClientNotification interface{}
 // ClientResult represents any result that can be sent from client to server.
 type ClientResult interface{}
 
-/* Server messages */
 // ServerRequest represents any request that can be sent from server to client.
 type ServerRequest interface{}
 

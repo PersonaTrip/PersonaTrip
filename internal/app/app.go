@@ -185,8 +185,8 @@ func (a *Application) createDefaultModelConfigIfNeeded() {
 		defaultConfig := &models.ModelConfigCreateRequest{
 			Name:        "默认ARK配置",
 			ModelType:   "ark",
-			ModelName:   "ep-20250408220714-wzgtv",
-			ApiKey:      "106dc02a-bd3b-41cb-a739-4e7301f48385",
+			ModelName:   "",
+			ApiKey:      "",
 			BaseUrl:     "https://ark.cn-beijing.volces.com/api/v3",
 			IsActive:    true,
 			Temperature: 0.7,
