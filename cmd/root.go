@@ -39,7 +39,10 @@ func Execute() error {
 	}
 
 	// 初始化应用程序
-	application := app.New()
+	application, err := app.New()
+	if err != nil {
+		return err
+	}
 
 	// 创建HTTP服务器
 	srv := &http.Server{

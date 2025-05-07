@@ -47,62 +47,70 @@ type Handlers struct {
 }
 
 // New 创建并初始化一个新的应用实例
-func New() *Application {
+func New() (*Application, error) {
 	// 加载配置
 	cfg, err := config.Load()
 	if err != nil {
-		logger.Fatalf("Failed to load config: %v", err)
+		logger.Errorf("Failed to load config: %v", err)
+		return nil, err
 	}
-
 	// 创建应用实例
 	app := &Application{
 		Router: gin.Default(),
 		Cfg:    cfg,
 	}
-
 	// 初始化数据库、仓库、服务和处理程序
-	app.initDatabase()
-	app.initRepositories()
+	err = app.initDatabase()
+	if err != nil {
+		return nil, err
+	}
+	err = app.initRepositories()
+	if err != nil {
+		return nil, err
+	}
 	app.initServices()
 	app.initHandlers()
 	app.setupRoutes()
 
 	// 创建超级管理员（如果配置了）
-	app.createSuperAdminIfNeeded()
-
+	err = app.createSuperAdminIfNeeded()
+	if err != nil {
+		return nil, err
+	}
 	// 创建默认的大模型配置
 	app.createDefaultModelConfigIfNeeded()
 
-	return app
+	return app, nil
 }
 
 // initDatabase 初始化数据库
-func (a *Application) initDatabase() {
+func (a *Application) initDatabase() error {
 	// 初始化MySQL存储层
 	mysqlDB, err := repository.NewMySQL(a.Cfg.MySQLDSN)
 	if err != nil {
-		logger.Warnf("Failed to connect to MySQL: %v", err)
-		// 如果无法连接MySQL，我们将无法提供用户认证和管理员功能
-		// 在实际生产环境中，这里应该处理得更优雅
+		logger.Errorf("Failed to connect to MySQL: %v", err)
+		return err
 	}
 
 	// 创建数据库抽象层
 	a.DB = repository.NewGormDatabase(mysqlDB.DB)
+	return nil
 }
 
 // initRepositories 初始化所有仓库
-func (a *Application) initRepositories() {
+func (a *Application) initRepositories() error {
 	a.Repositories = &Repositories{}
 
 	// 初始化MongoDB存储层或内存存储
 	mongoDB, err := repository.NewMongoDB(a.Cfg.MongoURI)
 	if err != nil {
 		// 如果MongoDB连接失败，使用内存存储
-		logger.Warnf("Failed to connect to MongoDB: %v, using in-memory storage instead", err)
-		a.Repositories.TripRepo = repository.NewMemoryStore()
+		logger.Errorf("Failed to connect to MongoDB: %v, using in-memory storage instead", err)
+		return err
 	} else {
 		a.Repositories.TripRepo = mongoDB
 	}
+	return nil
 }
 
 // initServices 初始化所有服务
@@ -145,7 +153,7 @@ func (a *Application) setupRoutes() {
 }
 
 // createSuperAdminIfNeeded 如果配置了，创建超级管理员
-func (a *Application) createSuperAdminIfNeeded() {
+func (a *Application) createSuperAdminIfNeeded() error {
 	if a.Cfg.CreateSuperAdmin {
 		logger.Info("Creating super admin if not exists...")
 		// 检查超级管理员是否存在
@@ -160,11 +168,13 @@ func (a *Application) createSuperAdminIfNeeded() {
 			})
 			if err != nil {
 				logger.Errorf("Failed to create super admin: %v", err)
+				return err
 			} else {
 				logger.Info("Super admin created successfully")
 			}
 		}
 	}
+	return nil
 }
 
 // createDefaultModelConfigIfNeeded 如果不存在，创建默认的大模型配置

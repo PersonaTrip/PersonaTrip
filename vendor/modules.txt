@@ -59,7 +59,7 @@ github.com/cloudwego/base64x/internal/native
 github.com/cloudwego/base64x/internal/native/avx2
 github.com/cloudwego/base64x/internal/native/sse
 github.com/cloudwego/base64x/internal/rt
-# github.com/cloudwego/eino v0.3.26
+# github.com/cloudwego/eino v0.3.27
 ## explicit; go 1.18
 github.com/cloudwego/eino/callbacks
 github.com/cloudwego/eino/components
@@ -71,6 +71,8 @@ github.com/cloudwego/eino/components/prompt
 github.com/cloudwego/eino/components/retriever
 github.com/cloudwego/eino/components/tool
 github.com/cloudwego/eino/compose
+github.com/cloudwego/eino/flow/agent
+github.com/cloudwego/eino/flow/agent/react
 github.com/cloudwego/eino/internal
 github.com/cloudwego/eino/internal/callbacks
 github.com/cloudwego/eino/internal/generic
@@ -79,9 +81,13 @@ github.com/cloudwego/eino/internal/gslice
 github.com/cloudwego/eino/internal/safe
 github.com/cloudwego/eino/internal/serialization
 github.com/cloudwego/eino/schema
+github.com/cloudwego/eino/utils/callbacks
 # github.com/cloudwego/eino-ext/components/model/ark v0.1.6
 ## explicit; go 1.18
 github.com/cloudwego/eino-ext/components/model/ark
+# github.com/cloudwego/eino-ext/components/tool/mcp v0.0.0-20250429121045-a2545a66f5cf
+## explicit; go 1.23
+github.com/cloudwego/eino-ext/components/tool/mcp
 # github.com/dustin/go-humanize v1.0.1
 ## explicit; go 1.16
 github.com/dustin/go-humanize

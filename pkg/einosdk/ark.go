@@ -2,13 +2,15 @@ package einosdk
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io"
-	"strings"
-
 	"github.com/cloudwego/eino-ext/components/model/ark"
+	"github.com/cloudwego/eino/compose"
+	"github.com/cloudwego/eino/flow/agent/react"
 	"github.com/cloudwego/eino/schema"
+	"io"
 	"personatrip/internal/utils/logger"
+	"strings"
 )
 
 // generateTextWithArk 使用Ark生成文本
@@ -39,21 +41,29 @@ func (c *Client) generateTextWithArk(ctx context.Context, req *GenerateTextReque
 		schema.UserMessage(req.Prompt),
 	}
 
-	logger.Info("连接ARK模型流式API...")
-
-	// 获取流式回复
-	reader, err := model.Stream(ctx, messages)
+	ragent, err := react.NewAgent(ctx, &react.AgentConfig{
+		Model:            model,
+		ToolCallingModel: model,
+		ToolsConfig: compose.ToolsNodeConfig{
+			Tools: req.Tools,
+		},
+		MaxStep:               80,
+		StreamToolCallChecker: ARKToolCallChecker,
+	})
 	if err != nil {
-		logger.Errorf("连接流式API失败: %v", err)
-		logger.Info("切换到模拟模式...")
-		return c.generateTextMock(ctx, req)
+		logger.Errorf("react new agent failure: %v", err)
+		return nil, err
 	}
-	defer reader.Close() // 确保关闭流
+
+	reader, err := ragent.Stream(ctx, messages)
+	if err != nil {
+		logger.Errorf("ragent generate failure: %v", err)
+		return nil, err
+	}
 
 	// 处理流式内容
 	logger.Info("--- ARK模型开始生成回复 ---")
 	var fullResponse strings.Builder
-
 	for {
 		chunk, err := reader.Recv()
 		if err != nil {
@@ -62,9 +72,9 @@ func (c *Client) generateTextWithArk(ctx context.Context, req *GenerateTextReque
 			}
 			break
 		}
-		fmt.Print(chunk.Content)
-		// 累积响应内容
-		if chunk.Content != "" {
+		if chunk.Extra["ark-reasoning-content"] != nil {
+			fmt.Printf("%v", chunk.Extra["ark-reasoning-content"])
+		} else if chunk.Content != "" {
 			fullResponse.WriteString(chunk.Content)
 		}
 	}
@@ -76,8 +86,31 @@ func (c *Client) generateTextWithArk(ctx context.Context, req *GenerateTextReque
 		logger.Info("未收到任何内容，切换到模拟模式...")
 		return c.generateTextMock(ctx, req)
 	}
-
 	return &GenerateTextResponse{
 		Text: fullResponse.String(),
 	}, nil
+}
+
+func ARKToolCallChecker(ctx context.Context, sr *schema.StreamReader[*schema.Message]) (bool, error) {
+	defer sr.Close()
+	for {
+		msg, err := sr.Recv()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				// 流结束，未检测到工具调用
+				break
+			}
+			return false, err
+		}
+		if msg.Content != "" {
+			fmt.Printf(msg.Content)
+		} else if msg.Extra["ark-reasoning-content"] != "" {
+			fmt.Printf("%v", msg.Extra["ark-reasoning-content"])
+		}
+		if len(msg.ToolCalls) > 0 {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

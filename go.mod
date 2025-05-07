@@ -5,8 +5,9 @@ go 1.23.0
 toolchain go1.23.8
 
 require (
-	github.com/cloudwego/eino v0.3.26
+	github.com/cloudwego/eino v0.3.27
 	github.com/cloudwego/eino-ext/components/model/ark v0.1.6
+	github.com/cloudwego/eino-ext/components/tool/mcp v0.0.0-20250429121045-a2545a66f5cf
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/golang-jwt/jwt/v5 v5.0.0

@@ -45,7 +45,7 @@ func InitMCPClient(ctx context.Context, opts *InitOptions) (*Client, error) {
 	// 初始化高德地图提供者
 	if opts.AMapAPIKey != "" {
 		amapProvider := amap.NewProvider(opts.AMapAPIKey)
-		client.AddProvider("amap", amapProvider)
+		client.AddProvider(ProviderAMap, amapProvider)
 	}
 
 	// 这里可以添加其他提供者的初始化
@@ -71,11 +71,15 @@ func PrintLoadedTools(ctx context.Context, client *Client) {
 		return
 	}
 
-	logger.Infof("已加载的MCP工具:")
+	fmt.Println("已加载的MCP工具:")
 	for provider, providerTools := range tools {
-		logger.Infof("提供者: %s\n", provider)
+		fmt.Println("提供者: %s\n", provider)
 		for _, tool := range providerTools {
-			logger.Infof("  - %s: %s\n", tool.Name, tool.Description)
+			toolInfo, err := tool.Info(ctx)
+			if err != nil {
+				logger.Errorf("tool info failure: %v", err)
+			}
+			fmt.Printf("  - %s: %s\n", toolInfo.Name, toolInfo.Desc)
 		}
 	}
 }

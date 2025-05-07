@@ -2,6 +2,8 @@ package amap
 
 import (
 	"context"
+	tmcp "github.com/cloudwego/eino-ext/components/tool/mcp"
+	"github.com/cloudwego/eino/components/tool"
 	"sync"
 
 	"github.com/mark3labs/mcp-go/client"
@@ -11,7 +13,7 @@ import (
 // Provider 高德地图MCP工具提供者
 type Provider struct {
 	client    *client.Client
-	tools     []mcp.Tool
+	tools     []tool.BaseTool
 	toolsLock sync.RWMutex
 	apiKey    string
 }
@@ -26,7 +28,7 @@ func NewProvider(apiKey string) *Provider {
 // Initialize 初始化高德地图MCP提供者
 func (p *Provider) Initialize(ctx context.Context) error {
 	// 创建高德地图MCP客户端
-	cli, err := client.NewStdioMCPClient("npx", []string{"AMAP_MAPS_API_KEY=" + p.apiKey}, "-y", "@amap/amap-maps-mcp-server")
+	cli, err := client.NewStdioMCPClient("npx", []string{EnvKeyName + "=" + p.apiKey}, "-y", PackageName)
 	if err != nil {
 		return err
 	}
@@ -56,20 +58,21 @@ func (p *Provider) Initialize(ctx context.Context) error {
 
 // refreshTools 刷新工具列表
 func (p *Provider) refreshTools(ctx context.Context) error {
-	listResult, err := p.client.ListTools(ctx, mcp.ListToolsRequest{})
+	tools, err := tmcp.GetTools(ctx, &tmcp.Config{Cli: p.client})
+
 	if err != nil {
 		return err
 	}
 
 	p.toolsLock.Lock()
-	p.tools = listResult.Tools
+	p.tools = tools
 	p.toolsLock.Unlock()
 
 	return nil
 }
 
 // GetTools 获取高德地图所有可用的工具
-func (p *Provider) GetTools(ctx context.Context) ([]mcp.Tool, error) {
+func (p *Provider) GetTools(ctx context.Context) ([]tool.BaseTool, error) {
 	p.toolsLock.RLock()
 	defer p.toolsLock.RUnlock()
 
@@ -83,7 +86,7 @@ func (p *Provider) GetTools(ctx context.Context) ([]mcp.Tool, error) {
 	}
 
 	// 复制工具列表
-	tools := make([]mcp.Tool, len(p.tools))
+	tools := make([]tool.BaseTool, len(p.tools))
 	copy(tools, p.tools)
 
 	return tools, nil

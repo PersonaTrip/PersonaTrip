@@ -3,6 +3,7 @@ package einosdk
 import (
 	"context"
 	"fmt"
+	"github.com/cloudwego/eino/components/tool"
 	"os"
 )
 
@@ -120,10 +121,11 @@ func getDefaultMaxToken() int {
 
 // GenerateTextRequest 是生成文本的请求参数
 type GenerateTextRequest struct {
-	Model       string  `json:"model"`
-	Prompt      string  `json:"prompt"`
-	MaxTokens   int     `json:"max_tokens"`
-	Temperature float32 `json:"temperature"`
+	Model       string          `json:"model"`
+	Prompt      string          `json:"prompt"`
+	MaxTokens   int             `json:"max_tokens"`
+	Temperature float32         `json:"temperature"`
+	Tools       []tool.BaseTool `json:"tools"`
 }
 
 // GenerateTextResponse 是生成文本的响应

@@ -152,16 +152,20 @@ func (s *EinoService) RefreshModelConfig(ctx context.Context) error {
 // GenerateTripPlan 根据用户请求生成旅行计划
 func (s *EinoService) GenerateTripPlan(ctx context.Context, req *models.PlanRequest) (*models.TripPlan, error) {
 	// 刷新模型配置，确保使用最新的配置
-	s.RefreshModelConfig(ctx)
+	err := s.RefreshModelConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	// 构建提示词
 	prompt := buildTripPlanPrompt(req)
-
+	rTools, err := s.mcpClient.GetToolsByProviderNameList(ctx, []string{pkgmcp.ProviderAMap})
 	// 调用Eino API
 	response, err := s.client.GenerateText(ctx, &einosdk.GenerateTextRequest{
 		Prompt:      prompt,
 		MaxTokens:   8000,
 		Temperature: s.defaultOptions.Temperature,
+		Tools:       rTools,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate trip plan: %w", err)
@@ -627,22 +631,6 @@ func (s *EinoService) GenerateDestinationRecommendations(ctx context.Context, pr
 	}
 
 	return recommendations, nil
-}
-
-// GetMCPTools 获取指定提供者的所有工具
-func (s *EinoService) GetMCPTools(ctx context.Context, providerName string) ([]mcp.Tool, error) {
-	if s.mcpClient == nil {
-		return nil, fmt.Errorf("MCP客户端未初始化")
-	}
-	return s.mcpClient.GetTools(ctx, providerName)
-}
-
-// GetAllMCPTools 获取所有提供者的所有工具
-func (s *EinoService) GetAllMCPTools(ctx context.Context) (map[string][]mcp.Tool, error) {
-	if s.mcpClient == nil {
-		return nil, fmt.Errorf("MCP客户端未初始化")
-	}
-	return s.mcpClient.GetAllTools(ctx)
 }
 
 // CallMCPTool 调用指定提供者的指定工具

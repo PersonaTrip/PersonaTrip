@@ -26,10 +26,12 @@ github.com/certifi/gocertifi v0.0.0-20190105021004-abcd57078448/go.mod h1:GJKEex
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cloudwego/base64x v0.1.5 h1:XPciSp1xaq2VCSt6lF0phncD4koWyULpl5bUxbfCyP4=
 github.com/cloudwego/base64x v0.1.5/go.mod h1:0zlkT4Wn5C6NdauXdJRhSKRlJvmclQ1hhJgA0rcu/8w=
-github.com/cloudwego/eino v0.3.26 h1:FdJJTCdNrc9xPcYkLZiEyr7AA+WgyCKCbY+VNDXIaCE=
-github.com/cloudwego/eino v0.3.26/go.mod h1:wUjz990apdsaOraOXdh6CdhVXq8DJsOvLsVlxNTcNfY=
+github.com/cloudwego/eino v0.3.27 h1:Oz4HcuivJyb+zT0W43Gmtb6wqmXZaYel0CS4iF6XsoI=
+github.com/cloudwego/eino v0.3.27/go.mod h1:wUjz990apdsaOraOXdh6CdhVXq8DJsOvLsVlxNTcNfY=
 github.com/cloudwego/eino-ext/components/model/ark v0.1.6 h1:k17Z9VIRBL0/t7Ty1drGgY9tVOraM5xuO6gy7Qx7xus=
 github.com/cloudwego/eino-ext/components/model/ark v0.1.6/go.mod h1:13kQjYGLMgla6xTbejlpqhuk3i5BPlNv5S+1pmknlOo=
+github.com/cloudwego/eino-ext/components/tool/mcp v0.0.0-20250429121045-a2545a66f5cf h1:lM22bS+h0eefrtCbIEgCOs79zaNfVQ3/JhiTuegxIE8=
+github.com/cloudwego/eino-ext/components/tool/mcp v0.0.0-20250429121045-a2545a66f5cf/go.mod h1:flYqhc4z9zZ1MxWnMCVVwKrNEWQNbuapq3NCwwX/xLs=
 github.com/cloudwego/iasm v0.2.0/go.mod h1:8rXZaNYT2n95jn+zTI1sDr+IgcD2GVs0nlbbQPiEFhY=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
